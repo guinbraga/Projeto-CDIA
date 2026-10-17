@@ -1,0 +1,731 @@
+{
+  "n_images": 38524,
+  "exact": {
+    "name": "exact_md5",
+    "groups": 2792,
+    "images_involved": 8575,
+    "redundant_removable": 5783,
+    "intra_same_class": 468,
+    "intra_cross_class": 4,
+    "cross_dataset": 2320,
+    "by_dataset": {
+      "kaggle_dataset": 2169,
+      "trashbox": 1055,
+      "trashnet": 2320,
+      "roboflow_convertido": 144
+    },
+    "largest_groups": [
+      6,
+      6,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5
+    ]
+  },
+  "perceptual": {
+    "name": "dHash<=1&pHash<=1",
+    "groups": 3005,
+    "images_involved": 9032,
+    "redundant_removable": 6027,
+    "intra_same_class": 674,
+    "intra_cross_class": 7,
+    "cross_dataset": 2324,
+    "by_dataset": {
+      "kaggle_dataset": 2176,
+      "trashbox": 1210,
+      "trashnet": 2319,
+      "roboflow_convertido": 202
+    },
+    "largest_groups": [
+      8,
+      8,
+      6,
+      6,
+      6,
+      6,
+      5,
+      5,
+      5,
+      5
+    ]
+  },
+  "per_dataset_intra": {
+    "kaggle_dataset": {
+      "n_images": 12398,
+      "intra_dup_groups": 1818,
+      "intra_images_involved": 4310,
+      "intra_redundant": 2492,
+      "largest_groups": [
+        4,
+        4,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3
+      ]
+    },
+    "roboflow_convertido": {
+      "n_images": 9457,
+      "intra_dup_groups": 199,
+      "intra_images_involved": 415,
+      "intra_redundant": 216,
+      "largest_groups": [
+        8,
+        8,
+        5,
+        3,
+        3,
+        2,
+        2,
+        2
+      ]
+    },
+    "trashbox": {
+      "n_images": 14279,
+      "intra_dup_groups": 389,
+      "intra_images_involved": 802,
+      "intra_redundant": 413,
+      "largest_groups": [
+        4,
+        4,
+        4,
+        3,
+        3,
+        3,
+        3,
+        3
+      ]
+    },
+    "trashnet": {
+      "n_images": 2390,
+      "intra_dup_groups": 4,
+      "intra_images_involved": 8,
+      "intra_redundant": 4,
+      "largest_groups": [
+        2,
+        2,
+        2,
+        2
+      ]
+    }
+  },
+  "cross_dataset_matrix": {
+    "kaggle_dataset <-> trashnet": 2076,
+    "trashbox <-> trashnet": 818,
+    "kaggle_dataset <-> trashbox": 580,
+    "kaggle_dataset <-> roboflow_convertido": 3,
+    "roboflow_convertido <-> trashnet": 3,
+    "roboflow_convertido <-> trashbox": 2
+  },
+  "label_conflict_groups": 49,
+  "label_conflict_examples": [
+    {
+      "size": 6,
+      "datasets": [
+        "kaggle_dataset",
+        "trashnet"
+      ],
+      "classes": [
+        "glass",
+        "plastic"
+      ],
+      "files": [
+        [
+          "kaggle_dataset",
+          "glass",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/glass/Glass173 (2).jpg"
+        ],
+        [
+          "kaggle_dataset",
+          "glass",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/glass/glass176.jpg"
+        ],
+        [
+          "kaggle_dataset",
+          "glass",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/glass/white-glass761.jpg"
+        ],
+        [
+          "kaggle_dataset",
+          "plastic",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/plastic/plastic152.jpg"
+        ],
+        [
+          "trashnet",
+          "glass",
+          "/home/guilherme/git/uni/trash/data/trashnet/dataset-resized/glass/glass176.jpg"
+        ],
+        [
+          "trashnet",
+          "plastic",
+          "/home/guilherme/git/uni/trash/data/trashnet/dataset-resized/plastic/plastic152.jpg"
+        ]
+      ]
+    },
+    {
+      "size": 6,
+      "datasets": [
+        "kaggle_dataset",
+        "trashnet"
+      ],
+      "classes": [
+        "glass",
+        "plastic"
+      ],
+      "files": [
+        [
+          "kaggle_dataset",
+          "glass",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/glass/Glass389 (2).jpg"
+        ],
+        [
+          "kaggle_dataset",
+          "glass",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/glass/glass389.jpg"
+        ],
+        [
+          "kaggle_dataset",
+          "glass",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/glass/plastic332.jpg"
+        ],
+        [
+          "kaggle_dataset",
+          "glass",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/glass/white-glass129.jpg"
+        ],
+        [
+          "trashnet",
+          "glass",
+          "/home/guilherme/git/uni/trash/data/trashnet/dataset-resized/glass/glass389.jpg"
+        ],
+        [
+          "trashnet",
+          "plastic",
+          "/home/guilherme/git/uni/trash/data/trashnet/dataset-resized/plastic/plastic332.jpg"
+        ]
+      ]
+    },
+    {
+      "size": 5,
+      "datasets": [
+        "kaggle_dataset",
+        "trashbox",
+        "trashnet"
+      ],
+      "classes": [
+        "cardboard",
+        "paper"
+      ],
+      "files": [
+        [
+          "kaggle_dataset",
+          "cardboard",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/cardboard/paper200.jpg"
+        ],
+        [
+          "kaggle_dataset",
+          "cardboard",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/cardboard/paper200 (2).jpg"
+        ],
+        [
+          "kaggle_dataset",
+          "cardboard",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/cardboard/paper577 (2).jpg"
+        ],
+        [
+          "trashbox",
+          "paper",
+          "/home/guilherme/git/uni/trash/data/trashbox/TrashBox_train_set/paper/paper 2458.jpg"
+        ],
+        [
+          "trashnet",
+          "paper",
+          "/home/guilherme/git/uni/trash/data/trashnet/dataset-resized/paper/paper200.jpg"
+        ]
+      ]
+    },
+    {
+      "size": 5,
+      "datasets": [
+        "kaggle_dataset",
+        "trashbox",
+        "trashnet"
+      ],
+      "classes": [
+        "cardboard",
+        "paper"
+      ],
+      "files": [
+        [
+          "kaggle_dataset",
+          "cardboard",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/cardboard/paper212 (2).jpg"
+        ],
+        [
+          "kaggle_dataset",
+          "cardboard",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/cardboard/paper212.jpg"
+        ],
+        [
+          "kaggle_dataset",
+          "cardboard",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/cardboard/paper591 (2).jpg"
+        ],
+        [
+          "trashbox",
+          "paper",
+          "/home/guilherme/git/uni/trash/data/trashbox/TrashBox_train_set/paper/paper 2475.jpg"
+        ],
+        [
+          "trashnet",
+          "paper",
+          "/home/guilherme/git/uni/trash/data/trashnet/dataset-resized/paper/paper212.jpg"
+        ]
+      ]
+    },
+    {
+      "size": 5,
+      "datasets": [
+        "kaggle_dataset",
+        "trashbox",
+        "trashnet"
+      ],
+      "classes": [
+        "cardboard",
+        "paper"
+      ],
+      "files": [
+        [
+          "kaggle_dataset",
+          "cardboard",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/cardboard/paper213 (2).jpg"
+        ],
+        [
+          "kaggle_dataset",
+          "cardboard",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/cardboard/paper213.jpg"
+        ],
+        [
+          "kaggle_dataset",
+          "cardboard",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/cardboard/paper592 (2).jpg"
+        ],
+        [
+          "trashbox",
+          "paper",
+          "/home/guilherme/git/uni/trash/data/trashbox/TrashBox_train_set/paper/paper 2476.jpg"
+        ],
+        [
+          "trashnet",
+          "paper",
+          "/home/guilherme/git/uni/trash/data/trashnet/dataset-resized/paper/paper213.jpg"
+        ]
+      ]
+    },
+    {
+      "size": 5,
+      "datasets": [
+        "kaggle_dataset",
+        "trashbox",
+        "trashnet"
+      ],
+      "classes": [
+        "cardboard",
+        "paper"
+      ],
+      "files": [
+        [
+          "kaggle_dataset",
+          "cardboard",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/cardboard/paper225.jpg"
+        ],
+        [
+          "kaggle_dataset",
+          "cardboard",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/cardboard/paper225 (2).jpg"
+        ],
+        [
+          "kaggle_dataset",
+          "cardboard",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/cardboard/paper606.jpg"
+        ],
+        [
+          "trashbox",
+          "paper",
+          "/home/guilherme/git/uni/trash/data/trashbox/TrashBox_train_set/paper/paper 2492.jpg"
+        ],
+        [
+          "trashnet",
+          "paper",
+          "/home/guilherme/git/uni/trash/data/trashnet/dataset-resized/paper/paper225.jpg"
+        ]
+      ]
+    },
+    {
+      "size": 5,
+      "datasets": [
+        "kaggle_dataset",
+        "trashbox",
+        "trashnet"
+      ],
+      "classes": [
+        "cardboard",
+        "paper"
+      ],
+      "files": [
+        [
+          "kaggle_dataset",
+          "cardboard",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/cardboard/paper258.jpg"
+        ],
+        [
+          "kaggle_dataset",
+          "cardboard",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/cardboard/paper258 (2).jpg"
+        ],
+        [
+          "kaggle_dataset",
+          "cardboard",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/cardboard/paper647.jpg"
+        ],
+        [
+          "trashbox",
+          "paper",
+          "/home/guilherme/git/uni/trash/data/trashbox/TrashBox_train_set/paper/paper 2541.jpg"
+        ],
+        [
+          "trashnet",
+          "paper",
+          "/home/guilherme/git/uni/trash/data/trashnet/dataset-resized/paper/paper258.jpg"
+        ]
+      ]
+    },
+    {
+      "size": 5,
+      "datasets": [
+        "kaggle_dataset",
+        "trashbox",
+        "trashnet"
+      ],
+      "classes": [
+        "cardboard",
+        "paper"
+      ],
+      "files": [
+        [
+          "kaggle_dataset",
+          "cardboard",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/cardboard/paper264.jpg"
+        ],
+        [
+          "kaggle_dataset",
+          "cardboard",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/cardboard/paper264 (2).jpg"
+        ],
+        [
+          "kaggle_dataset",
+          "cardboard",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/cardboard/paper655.jpg"
+        ],
+        [
+          "trashbox",
+          "paper",
+          "/home/guilherme/git/uni/trash/data/trashbox/TrashBox_train_set/paper/paper 2550.jpg"
+        ],
+        [
+          "trashnet",
+          "paper",
+          "/home/guilherme/git/uni/trash/data/trashnet/dataset-resized/paper/paper264.jpg"
+        ]
+      ]
+    },
+    {
+      "size": 5,
+      "datasets": [
+        "kaggle_dataset",
+        "trashbox",
+        "trashnet"
+      ],
+      "classes": [
+        "cardboard",
+        "paper"
+      ],
+      "files": [
+        [
+          "kaggle_dataset",
+          "cardboard",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/cardboard/paper310 (2).jpg"
+        ],
+        [
+          "kaggle_dataset",
+          "cardboard",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/cardboard/paper310.jpg"
+        ],
+        [
+          "kaggle_dataset",
+          "paper",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/paper/paper712.jpg"
+        ],
+        [
+          "trashbox",
+          "paper",
+          "/home/guilherme/git/uni/trash/data/trashbox/TrashBox_train_set/paper/paper 2622.jpg"
+        ],
+        [
+          "trashnet",
+          "paper",
+          "/home/guilherme/git/uni/trash/data/trashnet/dataset-resized/paper/paper310.jpg"
+        ]
+      ]
+    },
+    {
+      "size": 5,
+      "datasets": [
+        "kaggle_dataset",
+        "trashbox",
+        "trashnet"
+      ],
+      "classes": [
+        "cardboard",
+        "paper"
+      ],
+      "files": [
+        [
+          "kaggle_dataset",
+          "cardboard",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/cardboard/paper368 (2).jpg"
+        ],
+        [
+          "kaggle_dataset",
+          "cardboard",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/cardboard/paper368.jpg"
+        ],
+        [
+          "kaggle_dataset",
+          "paper",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/paper/paper782.jpg"
+        ],
+        [
+          "trashbox",
+          "paper",
+          "/home/guilherme/git/uni/trash/data/trashbox/TrashBox_train_set/paper/paper 12.jpg"
+        ],
+        [
+          "trashnet",
+          "paper",
+          "/home/guilherme/git/uni/trash/data/trashnet/dataset-resized/paper/paper368.jpg"
+        ]
+      ]
+    },
+    {
+      "size": 5,
+      "datasets": [
+        "kaggle_dataset",
+        "trashbox",
+        "trashnet"
+      ],
+      "classes": [
+        "cardboard",
+        "paper"
+      ],
+      "files": [
+        [
+          "kaggle_dataset",
+          "cardboard",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/cardboard/paper468 (3).jpg"
+        ],
+        [
+          "kaggle_dataset",
+          "cardboard",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/cardboard/paper468.jpg"
+        ],
+        [
+          "kaggle_dataset",
+          "paper",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/paper/paper905.jpg"
+        ],
+        [
+          "trashbox",
+          "paper",
+          "/home/guilherme/git/uni/trash/data/trashbox/TrashBox_train_set/paper/paper 163.jpg"
+        ],
+        [
+          "trashnet",
+          "paper",
+          "/home/guilherme/git/uni/trash/data/trashnet/dataset-resized/paper/paper468.jpg"
+        ]
+      ]
+    },
+    {
+      "size": 5,
+      "datasets": [
+        "kaggle_dataset",
+        "trashbox",
+        "trashnet"
+      ],
+      "classes": [
+        "cardboard",
+        "paper"
+      ],
+      "files": [
+        [
+          "kaggle_dataset",
+          "cardboard",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/cardboard/paper592 (3).jpg"
+        ],
+        [
+          "kaggle_dataset",
+          "cardboard",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/cardboard/paper592.jpg"
+        ],
+        [
+          "kaggle_dataset",
+          "paper",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/paper/paper10 (2).jpg"
+        ],
+        [
+          "trashbox",
+          "paper",
+          "/home/guilherme/git/uni/trash/data/trashbox/TrashBox_train_set/paper/paper 2321.jpg"
+        ],
+        [
+          "trashnet",
+          "paper",
+          "/home/guilherme/git/uni/trash/data/trashnet/dataset-resized/paper/paper592.jpg"
+        ]
+      ]
+    },
+    {
+      "size": 5,
+      "datasets": [
+        "kaggle_dataset",
+        "trashbox",
+        "trashnet"
+      ],
+      "classes": [
+        "cardboard",
+        "paper"
+      ],
+      "files": [
+        [
+          "kaggle_dataset",
+          "cardboard",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/cardboard/paper593 (3).jpg"
+        ],
+        [
+          "kaggle_dataset",
+          "cardboard",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/cardboard/paper593.jpg"
+        ],
+        [
+          "kaggle_dataset",
+          "paper",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/paper/paper11 (2).jpg"
+        ],
+        [
+          "trashbox",
+          "paper",
+          "/home/guilherme/git/uni/trash/data/trashbox/TrashBox_train_set/paper/paper 2324.jpg"
+        ],
+        [
+          "trashnet",
+          "paper",
+          "/home/guilherme/git/uni/trash/data/trashnet/dataset-resized/paper/paper593.jpg"
+        ]
+      ]
+    },
+    {
+      "size": 5,
+      "datasets": [
+        "kaggle_dataset",
+        "trashbox",
+        "trashnet"
+      ],
+      "classes": [
+        "cardboard",
+        "paper"
+      ],
+      "files": [
+        [
+          "kaggle_dataset",
+          "cardboard",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/cardboard/paper594 (3).jpg"
+        ],
+        [
+          "kaggle_dataset",
+          "cardboard",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/cardboard/paper594.jpg"
+        ],
+        [
+          "kaggle_dataset",
+          "paper",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/paper/paper12 (2).jpg"
+        ],
+        [
+          "trashbox",
+          "paper",
+          "/home/guilherme/git/uni/trash/data/trashbox/TrashBox_train_set/paper/paper 2325.jpg"
+        ],
+        [
+          "trashnet",
+          "paper",
+          "/home/guilherme/git/uni/trash/data/trashnet/dataset-resized/paper/paper594.jpg"
+        ]
+      ]
+    },
+    {
+      "size": 5,
+      "datasets": [
+        "kaggle_dataset",
+        "trashbox",
+        "trashnet"
+      ],
+      "classes": [
+        "cardboard",
+        "paper"
+      ],
+      "files": [
+        [
+          "kaggle_dataset",
+          "cardboard",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/cardboard/paper80 (2).jpg"
+        ],
+        [
+          "kaggle_dataset",
+          "cardboard",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/cardboard/paper80.jpg"
+        ],
+        [
+          "kaggle_dataset",
+          "paper",
+          "/home/guilherme/git/uni/trash/data/kaggle_dataset/convertido/paper/paper39 (2).jpg"
+        ],
+        [
+          "trashbox",
+          "paper",
+          "/home/guilherme/git/uni/trash/data/trashbox/TrashBox_train_set/paper/paper 2356.jpg"
+        ],
+        [
+          "trashnet",
+          "paper",
+          "/home/guilherme/git/uni/trash/data/trashnet/dataset-resized/paper/paper80.jpg"
+        ]
+      ]
+    }
+  ],
+  "verification": {
+    "n_sampled": 250,
+    "mean_corr": 0.9956555912981286,
+    "min_corr": 0.7787785253933006,
+    "frac_corr_gt_0.99": 0.964,
+    "frac_corr_gt_0.95": 0.968,
+    "frac_corr_lt_0.9": 0.024
+  }
+}

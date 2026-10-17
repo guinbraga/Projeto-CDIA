@@ -1,0 +1,166 @@
+{
+  "n_images": 38524,
+  "n_candidate_pairs_dhash_le_8": 4695335,
+  "thresholds": {
+    "d<=0,p<=0": {
+      "pairs": 10239,
+      "groups": 2950,
+      "images_involved": 8906,
+      "redundant": 5956,
+      "largest": [
+        6,
+        6,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5
+      ],
+      "intra": 626,
+      "cross": 2324
+    },
+    "d<=1,p<=1": {
+      "pairs": 10353,
+      "groups": 3005,
+      "images_involved": 9032,
+      "redundant": 6027,
+      "largest": [
+        8,
+        8,
+        6,
+        6,
+        6,
+        6,
+        5,
+        5,
+        5,
+        5
+      ],
+      "intra": 681,
+      "cross": 2324
+    },
+    "d<=2,p<=2": {
+      "pairs": 11692,
+      "groups": 3186,
+      "images_involved": 9682,
+      "redundant": 6496,
+      "largest": [
+        149,
+        15,
+        15,
+        11,
+        10,
+        9,
+        8,
+        7,
+        7,
+        7
+      ],
+      "intra": 863,
+      "cross": 2323
+    },
+    "d<=3,p<=3": {
+      "pairs": 12227,
+      "groups": 3208,
+      "images_involved": 9876,
+      "redundant": 6668,
+      "largest": [
+        179,
+        33,
+        24,
+        18,
+        16,
+        15,
+        12,
+        10,
+        10,
+        10
+      ],
+      "intra": 886,
+      "cross": 2322
+    },
+    "d<=4,p<=4": {
+      "pairs": 18306,
+      "groups": 3330,
+      "images_involved": 11237,
+      "redundant": 7907,
+      "largest": [
+        522,
+        273,
+        204,
+        113,
+        106,
+        43,
+        23,
+        14,
+        14,
+        14
+      ],
+      "intra": 1016,
+      "cross": 2314
+    },
+    "d<=6,p<=6": {
+      "pairs": 40126,
+      "groups": 3339,
+      "images_involved": 13336,
+      "redundant": 9997,
+      "largest": [
+        3280,
+        32,
+        13,
+        11,
+        11,
+        10,
+        9,
+        9,
+        9,
+        9
+      ],
+      "intra": 1033,
+      "cross": 2306
+    },
+    "d<=4,p<=8": {
+      "pairs": 44739,
+      "groups": 3271,
+      "images_involved": 13752,
+      "redundant": 10481,
+      "largest": [
+        3879,
+        38,
+        16,
+        10,
+        10,
+        9,
+        9,
+        9,
+        9,
+        9
+      ],
+      "intra": 961,
+      "cross": 2310
+    },
+    "d<=6,p<=10": {
+      "pairs": 119493,
+      "groups": 3145,
+      "images_involved": 15852,
+      "redundant": 12707,
+      "largest": [
+        6170,
+        81,
+        26,
+        21,
+        13,
+        9,
+        9,
+        9,
+        9,
+        9
+      ],
+      "intra": 846,
+      "cross": 2299
+    }
+  }
+}

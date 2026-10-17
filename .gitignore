@@ -1,0 +1,13 @@
+# Datasets — large binaries, managed separately (planned: DVC)
+data/
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Local agent / tooling state
+.omo/
+.codegraph
+
+# OS
+.DS_Store
