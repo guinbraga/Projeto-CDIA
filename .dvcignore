@@ -1,0 +1,8 @@
+# Paths DVC should never traverse when hashing/adding directories.
+# Note: this does NOT affect git; data/*.zip is ignored in .gitignore.
+data/.omo/
+.omo/
+.codegraph/
+__pycache__/
+*.py[cod]
+.DS_Store

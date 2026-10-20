@@ -1,5 +1,8 @@
-# Datasets — large binaries, managed separately (planned: DVC)
-data/
+# Datasets — large binaries are versioned with DVC. The `*.dvc` pointer files
+# and the `.gitignore` files DVC writes next to tracked outputs are committed.
+# Only non-DVC archives/scratch are excluded here:
+data/*.zip
+data/.omo/
 
 # Python
 __pycache__/

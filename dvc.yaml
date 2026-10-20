@@ -1,0 +1,27 @@
+# DVC pipeline. Each stage declares inputs (deps/params) and outputs (outs).
+# DVC hashes all of them into dvc.lock, so the exact state that produced a
+# given merged_dataset is recoverable from git.
+#
+#   dvc repro          -> re-run stages whose deps/params changed
+#   dvc status         -> show what is stale
+#   dvc dag            -> show the dependency graph
+stages:
+  merge:
+    cmd: >-
+      python3 scripts/merge_datasets.py
+      --overwrite
+      --seed ${merge.seed}
+      --val-ratio ${merge.val_ratio}
+      --test-ratio ${merge.test_ratio}
+    deps:
+      - scripts/merge_datasets.py
+      - data/trashnet/dataset-resized
+      - data/kaggle_dataset/convertido
+      - data/trashbox/TrashBox_train_set
+      - data/roboflow_convertido/merged
+    params:
+      - merge.seed
+      - merge.val_ratio
+      - merge.test_ratio
+    outs:
+      - data/merged_dataset

@@ -1,0 +1,6 @@
+[core]
+    autostage = true
+    check_update = false
+    remote = local
+['remote "local"']
+    url = /home/guilherme/dvc-remotes/trash

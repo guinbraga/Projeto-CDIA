@@ -1,0 +1,41 @@
+schema: '2.0'
+stages:
+  merge:
+    cmd: python3 scripts/merge_datasets.py --overwrite --seed 42 --val-ratio 
+      0.15 --test-ratio 0.15
+    deps:
+    - path: data/kaggle_dataset/convertido
+      hash: md5
+      md5: 11488d68e1543ab4d6c174869e4fc488.dir
+      size: 3708658311
+      nfiles: 12398
+    - path: data/roboflow_convertido/merged
+      hash: md5
+      md5: 8af3954d26c19dd7f4e59a604dc02d0f.dir
+      size: 177837036
+      nfiles: 9457
+    - path: data/trashbox/TrashBox_train_set
+      hash: md5
+      md5: aabb9d2a49877ab8da165fc5aba97c50.dir
+      size: 2292695148
+      nfiles: 14282
+    - path: data/trashnet/dataset-resized
+      hash: md5
+      md5: e38d3e1060754d9f412541078a903ddb.dir
+      size: 41343243
+      nfiles: 2390
+    - path: scripts/merge_datasets.py
+      hash: md5
+      md5: 40455ebf2363814d4110090d2fca83ac
+      size: 24205
+    params:
+      params.yaml:
+        merge.seed: 42
+        merge.test_ratio: 0.15
+        merge.val_ratio: 0.15
+    outs:
+    - path: data/merged_dataset
+      hash: md5
+      md5: 62e8040e3f456c6b6e95869b9bd2c849.dir
+      size: 1280085259
+      nfiles: 9089

@@ -1,0 +1,6 @@
+outs:
+- md5: aabb9d2a49877ab8da165fc5aba97c50.dir
+  size: 2292695148
+  nfiles: 14282
+  hash: md5
+  path: TrashBox_train_set

@@ -1,0 +1,6 @@
+# Parameters consumed by the pipeline defined in dvc.yaml.
+# Change a value here, then run `dvc repro` to rebuild only what is affected.
+merge:
+  seed: 42
+  val_ratio: 0.15
+  test_ratio: 0.15
