@@ -25,17 +25,23 @@ import numpy as np
 # --------------------------------------------------------------------------- #
 # Class counts
 # --------------------------------------------------------------------------- #
+def _label_array(labels: Iterable[int], num_classes: int) -> np.ndarray:
+    """Return the labels as an int64 array, rejecting indices out of range."""
+    array = np.asarray(list(labels), dtype=np.int64)
+    if array.size and (array.min() < 0 or array.max() >= num_classes):
+        raise ValueError(
+            f"labels outside [0, {num_classes}): min={int(array.min())} max={int(array.max())}"
+        )
+    return array
+
+
 def class_counts(labels: Iterable[int], num_classes: int) -> List[int]:
     """Return the number of samples per class index ``0 .. num_classes - 1``.
 
     Classes with no samples are reported as ``0`` rather than omitted, so the
     returned list always lines up with the model's output dimension.
     """
-    array = np.asarray(list(labels), dtype=np.int64)
-    if array.size and (array.min() < 0 or array.max() >= num_classes):
-        raise ValueError(
-            f"labels outside [0, {num_classes}): min={int(array.min())} max={int(array.max())}"
-        )
+    array = _label_array(labels, num_classes)
     counts = np.bincount(array, minlength=num_classes) if array.size else np.zeros(
         num_classes, dtype=np.int64)
     return [int(value) for value in counts[:num_classes]]
@@ -76,10 +82,7 @@ def _class_mass(counts: np.ndarray, alpha: float) -> np.ndarray:
     """Unnormalised share mass per class: ``n_c**(1 - alpha)``, ``0`` when empty."""
     mass = np.zeros_like(counts)
     present = counts > 0
-    if alpha == 0.0:
-        mass[present] = counts[present]
-    else:
-        mass[present] = np.power(counts[present], 1.0 - alpha)
+    mass[present] = np.power(counts[present], 1.0 - alpha)
     return mass
 
 
@@ -112,14 +115,9 @@ def per_sample_weights(labels: Iterable[int], counts: Sequence[int],
     carry that label all the same.
     """
     counts_array = _counts_array(counts)
-    label_array = np.asarray(list(labels), dtype=np.int64)
+    label_array = _label_array(labels, counts_array.size)
     if label_array.size == 0:
         return np.zeros(0, dtype=np.float64)
-    if label_array.min() < 0 or label_array.max() >= counts_array.size:
-        raise ValueError(
-            f"labels outside [0, {counts_array.size}): "
-            f"min={int(label_array.min())} max={int(label_array.max())}"
-        )
     class_weights = np.zeros_like(counts_array)
     present = counts_array > 0
     class_weights[present] = np.power(counts_array[present], -alpha)

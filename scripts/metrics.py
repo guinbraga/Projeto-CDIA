@@ -48,7 +48,8 @@ def summarize_confusion(confusion: np.ndarray, class_names: Sequence[str],
       support in this split. A class with zero support has an undefined
       recall; counting it as ``0`` would invent a collapse that no sample can
       contradict. With no support at all the scalars are ``0`` and
-      ``worst_class`` is ``None``.
+      ``worst_class`` is ``None``. ``balanced_acc`` is the mean per-class
+      recall, so it equals ``macro_recall`` by definition.
     """
     confusion = np.asarray(confusion, dtype=np.int64)
     num_classes = confusion.shape[0]
@@ -65,9 +66,9 @@ def summarize_confusion(confusion: np.ndarray, class_names: Sequence[str],
     accuracy = float(true_positive.sum() / grand_total) if grand_total > 0 else 0.0
     present = np.flatnonzero(support > 0)
     if present.size:
-        balanced_acc = float(recall[present].mean())
         macro_precision = float(precision[present].mean())
         macro_recall = float(recall[present].mean())
+        balanced_acc = macro_recall
         worst_index = int(present[int(np.argmin(f1[present]))])
         worst_class_f1 = float(f1[worst_index])
         worst_class: Any = class_names[worst_index]

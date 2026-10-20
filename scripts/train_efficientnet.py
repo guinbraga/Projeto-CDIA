@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Train an EfficientNetB0 classifier on the 8-class trash image dataset.
+"""Train an EfficientNetB0 classifier on a trash image dataset.
 
 What this script does
 ---------------------
@@ -145,6 +145,15 @@ except ImportError:  # pragma: no cover - optional
 IMAGENET_MEAN = [0.485, 0.456, 0.406]
 IMAGENET_STD = [0.229, 0.224, 0.225]
 
+# monitor name -> (metrics key, higher is better). One table so a new monitor
+# cannot be added with an accessor and a direction that disagree.
+MONITORED_METRICS: Dict[str, Tuple[str, bool]] = {
+    "f1": ("macro_f1", True),
+    "acc": ("acc", True),
+    "loss": ("loss", False),
+    "balanced_acc": ("balanced_acc", True),
+}
+
 
 # --------------------------------------------------------------------------- #
 # Environment
@@ -273,7 +282,7 @@ def alpha_arg(text: str) -> float:
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
-        description="Train EfficientNetB0 on the 8-class trash dataset.",
+        description="Train EfficientNetB0 on a trash image dataset.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("--data-dir", default=None, help="Dataset root.")
@@ -305,7 +314,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     parser.add_argument("--sampler-alpha", type=alpha_arg, default=0.0,
                         help="Training-stream resampling strength in [0,1]: 0 keeps the "
                              "natural shuffled stream, 1 makes classes equally likely.")
-    parser.add_argument("--monitor", choices=["f1", "acc", "loss", "balanced_acc"], default="f1",
+    parser.add_argument("--monitor", choices=list(MONITORED_METRICS), default="f1",
                         help="Val metric that selects the best checkpoint.")
     parser.add_argument("--test", action=argparse.BooleanOptionalAction, default=True,
                         help="Evaluate the test split with best weights.")
@@ -790,6 +799,7 @@ class RunState:
     best_epoch: int = -1
     best_stage: str = "none"
     epoch: int = 0
+    last_val: Optional[Dict[str, Any]] = None
 
 
 def save_checkpoint(path: Path, raw_model: nn.Module, train_ds: datasets.ImageFolder,
@@ -803,20 +813,16 @@ def save_checkpoint(path: Path, raw_model: nn.Module, train_ds: datasets.ImageFo
 
 def monitored_value(monitor: str, metrics: Dict[str, Any]) -> float:
     """Return the value of the monitored metric."""
-    if monitor == "loss":
-        return float(metrics["loss"])
-    if monitor == "acc":
-        return float(metrics["acc"])
-    if monitor == "balanced_acc":
-        return float(metrics["balanced_acc"])
-    return float(metrics["macro_f1"])
+    key, _ = MONITORED_METRICS[monitor]
+    return float(metrics[key])
 
 
 def is_improvement(monitor: str, value: float, best: Optional[float]) -> bool:
     """Return True when *value* beats *best* for the monitored metric."""
     if best is None:
         return True
-    return value < best if monitor == "loss" else value > best
+    _, higher_is_better = MONITORED_METRICS[monitor]
+    return value > best if higher_is_better else value < best
 
 
 def train_stage(net: nn.Module, raw_model: nn.Module, train_loader: DataLoader,
@@ -835,9 +841,11 @@ def train_stage(net: nn.Module, raw_model: nn.Module, train_loader: DataLoader,
             use_amp, amp_dtype, scaler, args.freeze_bn, batch_scheduler, f"{stage} {i + 1}")
         val = evaluate(net, raw_model, val_loader, criterion, device, class_names,
                        args.channels_last, use_amp, amp_dtype)
+        state.last_val = val
         print(f"[{stage} {i + 1}/{epochs}] train loss={train_loss:.4f} acc={train_acc:.4f} | "
               f"val loss={val['loss']:.4f} acc={val['acc']:.4f} f1={val['macro_f1']:.4f} "
-              f"bal_acc={val['balanced_acc']:.4f} top3={val['top3']:.4f}")
+              f"bal_acc={val['balanced_acc']:.4f} top3={val['top3']:.4f} "
+              f"worst={val['worst_class_f1']:.4f} ({val['worst_class']})")
         lrs = [group["lr"] for group in optimizer.param_groups]
         if epoch_scheduler is not None:
             epoch_scheduler.step()
@@ -872,9 +880,9 @@ def train_stage(net: nn.Module, raw_model: nn.Module, train_loader: DataLoader,
 # --------------------------------------------------------------------------- #
 # Main
 # --------------------------------------------------------------------------- #
-def main() -> None:
+def main(argv: Optional[List[str]] = None) -> None:
     """Entry point: resolve data, build the model, train, and write artifacts."""
-    args = parse_args()
+    args = parse_args(argv)
     if args.mount_drive:
         mount_drive()
     seed_everything(args.seed)
@@ -902,6 +910,10 @@ def main() -> None:
     train_counts = class_counts(train_ds.targets, len(class_names))
     ratio = imbalance_ratio(train_counts)
     print_sampler_report(class_names, train_counts, args.sampler_alpha)
+    empty_classes = [name for name, count in zip(class_names, train_counts) if count == 0]
+    if empty_classes:
+        print(f"[sampler] WARNING: no train samples for {empty_classes}; they get zero stream "
+              f"share and are excluded from the imbalance ratio.")
 
     batch_size = (auto_batch_size(device, len(train_ds), args.min_steps_per_epoch)
                   if args.batch_size == -1 else args.batch_size)
@@ -918,6 +930,11 @@ def main() -> None:
         pin_memory=device.type == "cuda",
         sampler=build_train_sampler(train_ds, args.sampler_alpha))
     steps_per_epoch = len(train_loader)
+    if steps_per_epoch == 0:
+        raise SystemExit(
+            f"[data] {len(train_ds)} train samples with batch_size={batch_size} and "
+            "drop_last=True gives zero steps per epoch. Set --batch-size "
+            f"<= {len(train_ds)} or add more data.")
     print(f"[data] steps_per_epoch={steps_per_epoch}")
 
     raw_model = build_model(len(class_names), device, args.channels_last)
@@ -977,6 +994,14 @@ def main() -> None:
     except KeyboardInterrupt:
         print("\n[interrupt] Training interrupted. The best checkpoint saved so far is preserved.")
         sys.exit(1)
+
+    if state.last_val is not None:
+        last = state.last_val
+        print(f"[val] last epoch {state.epoch}: balanced_acc={last['balanced_acc']:.4f} "
+              f"macro_precision={last['macro_precision']:.4f} "
+              f"macro_recall={last['macro_recall']:.4f} "
+              f"worst_class_f1={last['worst_class_f1']:.4f} ({last['worst_class']}) "
+              f"imbalance_ratio={ratio:.2f}")
 
     best_path = run_dir / "best.pt"
     if not best_path.exists():
@@ -1046,8 +1071,20 @@ def main() -> None:
                 name: float(share) for name, share in
                 zip(class_names, effective_class_shares(train_counts, args.sampler_alpha))},
             "imbalance_ratio": float(ratio),
+            "empty_train_classes": empty_classes,
             "train_loss_comparable_to_val_loss": args.sampler_alpha == 0.0,
         },
+        "last_validation": (
+            None if state.last_val is None else {
+                "loss": float(state.last_val["loss"]),
+                "acc": float(state.last_val["acc"]),
+                "macro_f1": float(state.last_val["macro_f1"]),
+                "balanced_acc": float(state.last_val["balanced_acc"]),
+                "macro_precision": float(state.last_val["macro_precision"]),
+                "macro_recall": float(state.last_val["macro_recall"]),
+                "worst_class_f1": float(state.last_val["worst_class_f1"]),
+                "worst_class": state.last_val["worst_class"],
+            }),
         "test_metrics": test_summary,
         "versions": {"python": platform.python_version(), "torch": torch.__version__,
                      "torchvision": torchvision.__version__, "numpy": np.__version__},

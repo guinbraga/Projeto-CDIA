@@ -34,15 +34,19 @@ class LabelDataset(torch.utils.data.Dataset):
         return torch.zeros(1), self.targets[index]
 
 
+def balanced_dataset() -> LabelDataset:
+    return LabelDataset([0] * 80 + [1] * 20, 2)
+
+
 def loader_steps(sampler: object = None) -> int:
-    dataset = LabelDataset([0] * 80 + [1] * 20, 2)
+    dataset = balanced_dataset()
     train_loader, _, _ = train.build_loaders(
         dataset, dataset, dataset, 16, 16, 0, 42, False, sampler=sampler)
     return len(train_loader)
 
 
 def test_alpha_zero_keeps_the_historical_shuffled_loader() -> None:
-    dataset = LabelDataset([0] * 80 + [1] * 20, 2)
+    dataset = balanced_dataset()
 
     assert train.build_train_sampler(dataset, 0.0) is None
 
@@ -57,7 +61,7 @@ def test_alpha_zero_keeps_the_historical_shuffled_loader() -> None:
 
 
 def test_sampler_replaces_and_keeps_steps_per_epoch() -> None:
-    dataset = LabelDataset([0] * 80 + [1] * 20, 2)
+    dataset = balanced_dataset()
     sampler = train.build_train_sampler(dataset, 0.5)
 
     assert sampler is not None
