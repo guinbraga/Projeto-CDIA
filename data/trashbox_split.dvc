@@ -1,0 +1,6 @@
+outs:
+- md5: 0f0d1292530004cf5463e2f449bfaec1.dir
+  size: 2216723331
+  nfiles: 14025
+  hash: md5
+  path: trashbox_split

@@ -1,0 +1,6 @@
+outs:
+- md5: ee0f8245f10b5aa58111fd18520a3a6a.dir
+  size: 3664449114
+  nfiles: 9898
+  hash: md5
+  path: kaggle_dataset_split
