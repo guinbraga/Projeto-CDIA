@@ -36,6 +36,11 @@ comparable** to validation/test loss. That is why ``--monitor`` also offers
 ``balanced_acc`` and why the startup audit table prints natural vs effective
 per-class share before any GPU time is spent.
 
+The training and evaluation criteria are built independently. Reported
+validation/test loss is always unweighted cross-entropy carrying
+``--label-smoothing``, so a future weighted training loss cannot silently
+redefine ``val_loss``, ``--monitor loss`` or ``test_metrics.json``'s ``loss``.
+
 The pure-numpy helpers live in ``imbalance.py`` and ``metrics.py`` next to
 this file (they are unit-tested without torch, so keep all three files
 together when uploading to Colab).
@@ -715,10 +720,36 @@ class HistoryWriter:
 
 
 # --------------------------------------------------------------------------- #
+# Criteria
+# --------------------------------------------------------------------------- #
+def build_train_criterion(label_smoothing: float,
+                          class_weights: Optional[torch.Tensor] = None
+                          ) -> nn.CrossEntropyLoss:
+    """Return the criterion used for backpropagation.
+
+    ``class_weights`` is the seam for a future imbalance-aware loss; it is
+    ``None`` in the current unweighted configuration. A weighted training
+    criterion deliberately never reaches evaluation -- see
+    :func:`build_eval_criterion`.
+    """
+    return nn.CrossEntropyLoss(label_smoothing=label_smoothing, weight=class_weights)
+
+
+def build_eval_criterion(label_smoothing: float) -> nn.CrossEntropyLoss:
+    """Return the criterion used to report validation and test loss.
+
+    Always unweighted cross-entropy carrying the configured label smoothing,
+    so reweighting the training stream or training loss cannot silently
+    redefine ``val_loss``, ``--monitor loss`` or the test metrics artifact.
+    """
+    return nn.CrossEntropyLoss(label_smoothing=label_smoothing)
+
+
+# --------------------------------------------------------------------------- #
 # Train / eval loops
 # --------------------------------------------------------------------------- #
 def train_one_epoch(net: nn.Module, raw_model: nn.Module, loader: DataLoader,
-                    criterion: nn.Module, optimizer: torch.optim.Optimizer,
+                    train_criterion: nn.Module, optimizer: torch.optim.Optimizer,
                     device: torch.device, channels_last: bool, use_amp: bool,
                     amp_dtype: Optional[torch.dtype], scaler: Optional[Any],
                     freeze_bn: bool, batch_scheduler: Optional[Any],
@@ -738,7 +769,7 @@ def train_one_epoch(net: nn.Module, raw_model: nn.Module, loader: DataLoader,
         optimizer.zero_grad(set_to_none=True)
         with autocast_ctx(use_amp, amp_dtype):
             outputs = net(inputs)
-            loss = criterion(outputs, targets)
+            loss = train_criterion(outputs, targets)
         if scaler is not None and scaler.is_enabled():
             scaler.scale(loss).backward()
             scaler.unscale_(optimizer)
@@ -757,8 +788,9 @@ def train_one_epoch(net: nn.Module, raw_model: nn.Module, loader: DataLoader,
     return (running_loss / total if total else 0.0, correct / total if total else 0.0)
 
 
-def evaluate(net: nn.Module, raw_model: nn.Module, loader: DataLoader, criterion: nn.Module,
-             device: torch.device, class_names: List[str], channels_last: bool, use_amp: bool,
+def evaluate(net: nn.Module, raw_model: nn.Module, loader: DataLoader,
+             eval_criterion: nn.Module, device: torch.device, class_names: List[str],
+             channels_last: bool, use_amp: bool,
              amp_dtype: Optional[torch.dtype]) -> Dict[str, Any]:
     """Evaluate the model, returning loss plus a full metric dictionary."""
     raw_model.eval()
@@ -774,7 +806,7 @@ def evaluate(net: nn.Module, raw_model: nn.Module, loader: DataLoader, criterion
                 inputs = inputs.contiguous(memory_format=torch.channels_last)
             with autocast_ctx(use_amp, amp_dtype):
                 outputs = net(inputs)
-                loss = criterion(outputs, targets)
+                loss = eval_criterion(outputs, targets)
             running_loss += loss.item() * targets.size(0)
             preds = outputs.argmax(dim=1)
             indices = targets * num_classes + preds
@@ -826,7 +858,8 @@ def is_improvement(monitor: str, value: float, best: Optional[float]) -> bool:
 
 
 def train_stage(net: nn.Module, raw_model: nn.Module, train_loader: DataLoader,
-                val_loader: DataLoader, criterion: nn.Module, optimizer: torch.optim.Optimizer,
+                val_loader: DataLoader, train_criterion: nn.Module,
+                eval_criterion: nn.Module, optimizer: torch.optim.Optimizer,
                 device: torch.device, args: argparse.Namespace, class_names: List[str],
                 train_ds: datasets.ImageFolder, use_amp: bool, amp_dtype: Optional[torch.dtype],
                 scaler: Optional[Any], history: HistoryWriter, run_dir: Path, state: RunState,
@@ -837,9 +870,9 @@ def train_stage(net: nn.Module, raw_model: nn.Module, train_loader: DataLoader,
     for i in range(epochs):
         start = time.time()
         train_loss, train_acc = train_one_epoch(
-            net, raw_model, train_loader, criterion, optimizer, device, args.channels_last,
+            net, raw_model, train_loader, train_criterion, optimizer, device, args.channels_last,
             use_amp, amp_dtype, scaler, args.freeze_bn, batch_scheduler, f"{stage} {i + 1}")
-        val = evaluate(net, raw_model, val_loader, criterion, device, class_names,
+        val = evaluate(net, raw_model, val_loader, eval_criterion, device, class_names,
                        args.channels_last, use_amp, amp_dtype)
         state.last_val = val
         print(f"[{stage} {i + 1}/{epochs}] train loss={train_loss:.4f} acc={train_acc:.4f} | "
@@ -943,7 +976,8 @@ def main(argv: Optional[List[str]] = None) -> None:
     use_amp = bool(args.amp) and device.type == "cuda" and amp_dtype is not None
     scaler = torch.amp.GradScaler("cuda", enabled=(use_amp and amp_dtype == torch.float16))
     print(f"[amp] enabled={use_amp} dtype={amp_dtype if use_amp else 'off'}")
-    criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing)
+    train_criterion = build_train_criterion(args.label_smoothing)
+    eval_criterion = build_eval_criterion(args.label_smoothing)
 
     history = HistoryWriter(run_dir / "history.csv", history_fieldnames(class_names))
     state = RunState()
@@ -960,9 +994,10 @@ def main(argv: Optional[List[str]] = None) -> None:
             scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
                 optimizer, T_max=max(1, warmup_epochs), eta_min=args.head_lr * 0.05)
             print(f"[stage] warmup: training head only for {warmup_epochs} epochs")
-            train_stage(net, raw_model, train_loader, val_loader, criterion, optimizer, device,
-                        args, class_names, train_ds, use_amp, amp_dtype, scaler, history, run_dir,
-                        state, "warmup", warmup_epochs, scheduler, None, 0)
+            train_stage(net, raw_model, train_loader, val_loader, train_criterion, eval_criterion,
+                        optimizer, device, args, class_names, train_ds, use_amp, amp_dtype,
+                        scaler, history, run_dir, state, "warmup", warmup_epochs, scheduler,
+                        None, 0)
 
         if fine_epochs > 0:
             for param in raw_model.parameters():
@@ -986,9 +1021,10 @@ def main(argv: Optional[List[str]] = None) -> None:
                 optimizer, schedulers=[warm, cosine], milestones=[steps_per_epoch])
             print(f"[stage] fine-tune: full model for {fine_epochs} epochs "
                   f"(head={len(head_params)} decay={len(decay)} no_decay={len(no_decay)})")
-            train_stage(net, raw_model, train_loader, val_loader, criterion, optimizer, device,
-                        args, class_names, train_ds, use_amp, amp_dtype, scaler, history, run_dir,
-                        state, "finetune", fine_epochs, None, scheduler, args.patience)
+            train_stage(net, raw_model, train_loader, val_loader, train_criterion, eval_criterion,
+                        optimizer, device, args, class_names, train_ds, use_amp, amp_dtype,
+                        scaler, history, run_dir, state, "finetune", fine_epochs, None,
+                        scheduler, args.patience)
         else:
             print("[stage] fine_epochs<=0 -> skipping fine-tune stage.")
     except KeyboardInterrupt:
@@ -1018,7 +1054,7 @@ def main(argv: Optional[List[str]] = None) -> None:
 
     test_summary: Optional[Dict[str, Any]] = None
     if args.test:
-        test_metrics = evaluate(net, raw_model, test_loader, criterion, device, class_names,
+        test_metrics = evaluate(net, raw_model, test_loader, eval_criterion, device, class_names,
                                 args.channels_last, use_amp, amp_dtype)
         confusion_np = np.array(test_metrics["confusion"], dtype=np.int64)
         print("\n" + "=" * 72 + "\nTEST RESULTS (best checkpoint)\n" + "=" * 72)
