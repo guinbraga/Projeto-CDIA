@@ -6,6 +6,9 @@ split is **stratified by class**: every class is shuffled and divided
 independently, using the same sizing rule as ``merge_datasets.py``
 (``split_sizes``), so the class distribution is preserved in every split.
 
+The low-level I/O primitives (discovery, survey, materialisation, manifest) live
+in ``scripts/dataset_io.py``.
+
 Equivalence with ``merged_dataset``
 -----------------------------------
 ``scripts/merge_datasets.py`` builds ``data/merged_dataset`` with the very same
@@ -58,22 +61,12 @@ Preview the plan without writing anything::
 from __future__ import annotations
 
 import argparse
-import csv
-import hashlib
 import os
 import random
-import shutil
 import sys
-from dataclasses import dataclass
-from io import BytesIO
 from pathlib import Path
 
-try:
-    from PIL import Image
-except ImportError as exc:  # pragma: no cover - friendly message
-    raise SystemExit(
-        "[erro] Pillow não está instalado. Instale com:  pip install pillow"
-    ) from exc
+import dataset_io
 
 # --------------------------------------------------------------------------- #
 # Configuration
@@ -88,42 +81,13 @@ DEFAULT_DATASETS: dict[str, Path] = {
     "trashbox": Path("trashbox/TrashBox_train_set"),
 }
 
-#: Recognised image extensions (compared case-insensitively).
-IMAGE_EXTENSIONS: frozenset[str] = frozenset(
-    {".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp"}
-)
-
-SPLIT_NAMES: tuple[str, ...] = ("train", "val", "test")
-
-MANIFEST_FIELDS: tuple[str, ...] = (
-    "split",
-    "class",
-    "source",
-    "md5",
-    "mode",
-    "src_path",
-    "dst_path",
-)
-
-#: Mapping used when a source image does not report a format.
-_SUFFIX_FORMATS: dict[str, str] = {
-    ".jpg": "JPEG",
-    ".jpeg": "JPEG",
-    ".png": "PNG",
-    ".bmp": "BMP",
-    ".gif": "GIF",
-    ".webp": "WEBP",
-}
+#: Kept as a module-level alias for backwards compatibility.
+split_sizes = dataset_io.split_sizes
 
 
 # --------------------------------------------------------------------------- #
 # Discovery
 # --------------------------------------------------------------------------- #
-
-
-def is_image(path: Path) -> bool:
-    """Return True when ``path`` has a recognised image extension."""
-    return path.suffix.lower() in IMAGE_EXTENSIONS
 
 
 def discover_classes(
@@ -157,7 +121,7 @@ def discover_classes(
         )
 
         images = sorted(
-            root_path / name for name in files if is_image(root_path / name)
+            root_path / name for name in files if dataset_io.is_image(root_path / name)
         )
         if not images:
             continue
@@ -182,22 +146,6 @@ def discover_classes(
 # --------------------------------------------------------------------------- #
 
 
-def split_sizes(n: int, val_ratio: float, test_ratio: float) -> tuple[int, int, int]:
-    """Split ``n`` items into (train, val, test), rounding val/test and fixing
-    rounding overshoot so the counts are always non-negative and sum to ``n``."""
-    n_val = int(round(n * val_ratio))
-    n_test = int(round(n * test_ratio))
-    while n_val + n_test > n:
-        if n_test > 0 and n_test >= n_val:
-            n_test -= 1
-        elif n_val > 0:
-            n_val -= 1
-        else:
-            break
-    n_train = n - n_val - n_test
-    return n_train, n_val, n_test
-
-
 def plan_split(
     classes: dict[str, list[Path]],
     rng: random.Random,
@@ -212,7 +160,9 @@ def plan_split(
     Returns ``split_name -> [(class, path), ...]`` and
     ``class -> (n_train, n_val, n_test)``.
     """
-    splits: dict[str, list[tuple[str, Path]]] = {name: [] for name in SPLIT_NAMES}
+    splits: dict[str, list[tuple[str, Path]]] = {
+        name: [] for name in dataset_io.SPLIT_NAMES
+    }
     counts: dict[str, tuple[int, int, int]] = {}
 
     for cls in sorted(classes):
@@ -227,183 +177,6 @@ def plan_split(
         splits["test"].extend((cls, path) for path in paths[n_train + n_val :])
 
     return splits, counts
-
-
-# --------------------------------------------------------------------------- #
-# Survey / validation
-# --------------------------------------------------------------------------- #
-
-
-@dataclass(frozen=True)
-class ImageInfo:
-    """Metadata gathered in a single read of each candidate image."""
-
-    path: Path
-    cls: str
-    md5: str
-    mode: str
-    width: int
-    height: int
-
-
-def survey_images(
-    classes: dict[str, list[Path]],
-) -> tuple[dict[Path, ImageInfo], list[tuple[Path, str]]]:
-    """Read each candidate once: compute md5, capture mode/size, verify integrity.
-
-    Returns ``(infos, invalid)`` where ``infos`` maps path -> :class:`ImageInfo`
-    for every readable image and ``invalid`` lists ``(path, reason)`` for the
-    ones that could not be read or decoded.
-    """
-    infos: dict[Path, ImageInfo] = {}
-    invalid: list[tuple[Path, str]] = []
-
-    for cls in sorted(classes):
-        for path in classes[cls]:
-            try:
-                data = path.read_bytes()
-            except OSError as exc:
-                invalid.append((path, f"ilegível: {exc}"))
-                continue
-
-            if not data:
-                invalid.append((path, "arquivo vazio (0 bytes)"))
-                continue
-
-            digest = hashlib.md5(data).hexdigest()
-            try:
-                with Image.open(BytesIO(data)) as im:
-                    mode, size = im.mode, im.size
-                    im.verify()
-            except Exception as exc:  # noqa: BLE001 - report and drop
-                invalid.append((path, f"corrompido: {exc}"))
-                continue
-
-            infos[path] = ImageInfo(
-                path=path,
-                cls=cls,
-                md5=digest,
-                mode=mode,
-                width=size[0],
-                height=size[1],
-            )
-
-    return infos, invalid
-
-
-# --------------------------------------------------------------------------- #
-# Materialisation
-# --------------------------------------------------------------------------- #
-
-
-def reset_output(output: Path, overwrite: bool) -> None:
-    """Create ``output``, refusing to replace a non-empty directory by default."""
-    if output.exists() and any(output.iterdir()):
-        if not overwrite:
-            raise SystemExit(
-                f"[erro] '{output}' já existe e não está vazio. "
-                "Use --overwrite para substituí-lo."
-            )
-        shutil.rmtree(output)
-    output.mkdir(parents=True, exist_ok=True)
-
-
-def _format_for_suffix(dst_path: Path) -> str:
-    return _SUFFIX_FORMATS.get(dst_path.suffix.lower(), "JPEG")
-
-
-def write_image(
-    src_path: Path,
-    dst_path: Path,
-    *,
-    use_link: bool,
-    convert_rgb: bool,
-    mode: str | None,
-) -> bool:
-    """Write one image to ``dst_path``. Returns True if it was re-encoded."""
-    if convert_rgb and mode not in (None, "RGB"):
-        with Image.open(src_path) as im:
-            image_format = im.format or _format_for_suffix(dst_path)
-            save_kwargs: dict[str, object] = {}
-            if image_format == "JPEG":
-                save_kwargs["quality"] = 95
-            im.convert("RGB").save(dst_path, format=image_format, **save_kwargs)
-        return True
-
-    if use_link:
-        try:
-            os.link(src_path, dst_path)
-            return False
-        except OSError:
-            pass  # fall through to copy
-
-    shutil.copy2(src_path, dst_path)
-    return False
-
-
-def materialize(
-    records: dict[str, list[tuple[str, Path]]],
-    output: Path,
-    dataset: str,
-    infos: dict[Path, ImageInfo],
-    *,
-    use_link: bool,
-    convert_rgb: bool,
-) -> tuple[list[dict[str, str]], int]:
-    """Write the planned images and return ``(manifest rows, re-encoded count)``."""
-    manifest: list[dict[str, str]] = []
-    used_names: dict[Path, set[str]] = {}
-    converted = 0
-
-    for name in SPLIT_NAMES:
-        for cls, src_path in records[name]:
-            dst_dir = output / name / cls
-            dst_dir.mkdir(parents=True, exist_ok=True)
-
-            filename = src_path.name
-            used = used_names.setdefault(dst_dir, set())
-            if filename in used:
-                stem, ext = os.path.splitext(filename)
-                counter = 1
-                while f"{stem}_{counter}{ext}" in used:
-                    counter += 1
-                filename = f"{stem}_{counter}{ext}"
-            used.add(filename)
-
-            dst_path = dst_dir / filename
-            if dst_path.exists():
-                dst_path.unlink()
-
-            info = infos.get(src_path)
-            if write_image(
-                src_path,
-                dst_path,
-                use_link=use_link,
-                convert_rgb=convert_rgb,
-                mode=info.mode if info else None,
-            ):
-                converted += 1
-
-            manifest.append(
-                {
-                    "split": name,
-                    "class": cls,
-                    "source": dataset,
-                    "md5": info.md5 if info else "",
-                    "mode": info.mode if info else "",
-                    "src_path": str(src_path),
-                    "dst_path": str(dst_path),
-                }
-            )
-
-    return manifest, converted
-
-
-def write_manifest(manifest: list[dict[str, str]], output: Path) -> None:
-    with open(output / "manifest.csv", "w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=list(MANIFEST_FIELDS))
-        writer.writeheader()
-        writer.writerows(manifest)
 
 
 # --------------------------------------------------------------------------- #
@@ -566,9 +339,9 @@ def main(argv: list[str] | None = None) -> int:
         rng = random.Random(args.seed)
         classes = discover_classes(source, exclude={output.resolve()})
 
-        infos: dict[Path, ImageInfo] = {}
+        infos: dict[Path, dataset_io.ImageInfo] = {}
         if args.validate or args.rgb:
-            infos, invalid = survey_images(classes)
+            infos, invalid = dataset_io.survey_images({dataset: classes})
             status = "descartadas" if args.validate else "inválidas (mantidas)"
             print(
                 f"\n[survey] {dataset}: {len(infos)} imagens válidas; "
@@ -597,16 +370,19 @@ def main(argv: list[str] | None = None) -> int:
             print("  [dry-run] nada foi gravado para este dataset.")
             continue
 
-        reset_output(output, args.overwrite)
-        manifest, converted = materialize(
-            records,
+        dataset_io.reset_output(output, args.overwrite)
+        records_with_source = {
+            name: [(cls, dataset, path) for cls, path in items]
+            for name, items in records.items()
+        }
+        manifest, converted = dataset_io.materialize(
+            records_with_source,
             output,
-            dataset,
             infos,
             use_link=args.link,
             convert_rgb=args.rgb,
         )
-        write_manifest(manifest, output)
+        dataset_io.write_manifest(manifest, output)
 
         print(f"\n[ok] {dataset}: {len(manifest)} imagens gravadas em {output}")
         if args.rgb:
