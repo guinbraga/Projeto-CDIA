@@ -1,6 +1,6 @@
 outs:
-- md5: 5da264d5f5c846860d2e6cc4f519a216.dir
-  size: 3648071766
-  nfiles: 9883
+- md5: af4f42b4a18fd73a77c7d5c78bf8eacc.dir
+  size: 3646599138
+  nfiles: 9812
   hash: md5
   path: kaggle_dataset_split
