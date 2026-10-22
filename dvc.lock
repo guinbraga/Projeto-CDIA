@@ -39,3 +39,48 @@ stages:
       md5: 62e8040e3f456c6b6e95869b9bd2c849.dir
       size: 1280085259
       nfiles: 9089
+  content-index:
+    cmd: python3 scripts/content_index.py
+    deps:
+    - path: data/kaggle_dataset/convertido
+      hash: md5
+      md5: 3d67bbb9e04ca244b38f26fe5dde963a.dir
+      size: 3645655485
+      nfiles: 9882
+    - path: data/roboflow_convertido/merged
+      hash: md5
+      md5: f5c12b906fe2bc573eb5aadcbf93bafd.dir
+      size: 175492023
+      nfiles: 9313
+    - path: data/trashbox/TrashBox_train_set
+      hash: md5
+      md5: 3fa956080b558885348edd52f25e0681.dir
+      size: 2238450427
+      nfiles: 14024
+    - path: data/trashnet/dataset-resized
+      hash: md5
+      md5: 8821c401318c37c670a4ef957ce99483.dir
+      size: 41262675
+      nfiles: 2384
+    - path: scripts/content_index.py
+      hash: md5
+      md5: d4841376166619c19e26338fe6865dfb
+      size: 15477
+    - path: scripts/dataset_io.py
+      hash: md5
+      md5: 16b75ce3abb911505605283426a67c70
+      size: 8709
+    - path: scripts/detect_duplicate_images.py
+      hash: md5
+      md5: 2579554040deddf6b795ebbcc21c2b7e
+      size: 5173
+      isexec: true
+    outs:
+    - path: data/content_index.csv
+      hash: md5
+      md5: 30a7d344fd05afb95bc8bbcae261a76c
+      size: 6925280
+    - path: reports/content_index/unreadable_images.csv
+      hash: md5
+      md5: 4b518656d1f97c5276f75b4703012c02
+      size: 25

@@ -6,6 +6,20 @@
 #   dvc status         -> show what is stale
 #   dvc dag            -> show the dependency graph
 stages:
+  content-index:
+    cmd: python3 scripts/content_index.py
+    deps:
+      - scripts/content_index.py
+      - scripts/dataset_io.py
+      - scripts/detect_duplicate_images.py
+      - data/kaggle_dataset/convertido
+      - data/roboflow_convertido/merged
+      - data/trashbox/TrashBox_train_set
+      - data/trashnet/dataset-resized
+    outs:
+      - data/content_index.csv
+      - reports/content_index/unreadable_images.csv
+
   merge:
     cmd: >-
       python3 scripts/merge_datasets.py
