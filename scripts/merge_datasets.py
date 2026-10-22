@@ -573,6 +573,57 @@ def plan_merge(
 # --------------------------------------------------------------------------- #
 
 
+def verify_materialized(plan: MergePlan, output: Path) -> None:
+    """Assert that ``output/manifest.csv`` is exactly the recomputed plan."""
+    manifest = output / "manifest.csv"
+    if not manifest.is_file():
+        raise MergeError(f"merged manifest not found: {manifest}")
+    fieldnames, rows = _read_csv(manifest, "merged manifest")
+    required = ("split", "class", "source", "cluster_id")
+    missing_columns = [column for column in required if column not in fieldnames]
+    if missing_columns:
+        raise MergeError(
+            f"merged manifest '{manifest}' is missing required columns: "
+            f"{', '.join(missing_columns)}"
+        )
+
+    expected: dict[str, tuple[str, str, str]] = {}
+    for split, records in plan.records.items():
+        for cls, source, src_path in records:
+            expected[plan.cluster_ids[src_path]] = (split, cls, source)
+
+    actual: dict[str, tuple[str, str, str]] = {}
+    duplicates: set[str] = set()
+    for line, raw in enumerate(rows, start=2):
+        cluster_id = (raw.get("cluster_id") or "").strip()
+        if not cluster_id:
+            raise MergeError(
+                f"merged manifest '{manifest}': empty cluster_id at line {line}"
+            )
+        if cluster_id in actual:
+            duplicates.add(cluster_id)
+            continue
+        actual[cluster_id] = (
+            (raw.get("split") or "").strip(),
+            (raw.get("class") or "").strip(),
+            (raw.get("source") or "").strip(),
+        )
+
+    missing = sorted(set(expected) - set(actual))
+    extra = sorted(set(actual) - set(expected))
+    mismatched = sorted(
+        cluster_id
+        for cluster_id in set(expected) & set(actual)
+        if expected[cluster_id] != actual[cluster_id]
+    )
+    if duplicates or missing or extra or mismatched:
+        raise MergeError(
+            "merged manifest does not match the registry plan "
+            f"(duplicates={sorted(duplicates)[:5]}, missing={missing[:5]}, "
+            f"extra={extra[:5]}, mismatched={mismatched[:5]})"
+        )
+
+
 def validate_plan(plan: MergePlan, registry: Sequence[RegistryCluster]) -> None:
     """Assert the merged invariants; raise :class:`MergeError` on any violation."""
     canonical = {entry.cluster_id: entry for entry in registry}
@@ -798,6 +849,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="só mostra o plano, sem gravar arquivos",
     )
     parser.add_argument(
+        "--verify-existing",
+        type=Path,
+        default=None,
+        metavar="OUTPUT",
+        help=(
+            "verifica se OUTPUT/manifest.csv corresponde ao plano do registro; "
+            "não grava nada"
+        ),
+    )
+    parser.add_argument(
         "--link",
         action="store_true",
         help="tenta hardlink em vez de copiar (cai para cópia se falhar)",
@@ -827,6 +888,15 @@ def main(argv: list[str] | None = None) -> int:
 
     print(format_plan(plan))
     print(format_result(plan))
+
+    if args.verify_existing is not None:
+        try:
+            verify_materialized(plan, args.verify_existing)
+        except MergeError as exc:
+            print(f"[erro] {exc}", file=sys.stderr)
+            return 1
+        print(f"\n[ok] {args.verify_existing} corresponde ao plano do registro")
+        return 0
 
     if args.dry_run:
         print("\n[dry-run] nada foi copiado.")

@@ -77,8 +77,10 @@ CPU / T4 smoke test::
 
 Making the dataset zip locally
 ------------------------------
-From the repository root, so the archive contains a top-level
-``merged_dataset/`` folder::
+Rebuild the archive from the current registry-derived ``data/merged_dataset``
+(any archive from before the global split registry is stale). From the
+repository root, so the archive contains a top-level ``merged_dataset/``
+folder::
 
     cd data && zip -r merged_dataset.zip merged_dataset
 

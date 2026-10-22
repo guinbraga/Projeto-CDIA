@@ -424,8 +424,7 @@ def test_format_report_contains_all_checks(tmp_path: Path) -> None:
     assert "RESULT:" in report
 
 
-# Ticket 07 replaces this pre-registry baseline once cluster ids exist.
-def test_real_data_baseline_pre_registry() -> None:
+def test_real_data_rebuilt_datasets_pass(capsys) -> None:
     data = REPO / "data"
     names = (
         "trashnet_split",
@@ -434,43 +433,33 @@ def test_real_data_baseline_pre_registry() -> None:
         "roboflow_convertido_split",
     )
     manifests = [data / name / "manifest.csv" for name in names]
-    merged_manifest = data / "merged_dataset_balanced" / "manifest.csv"
-    for manifest in [*manifests, merged_manifest]:
-        if not manifest.is_file():
-            pytest.skip(f"missing baseline manifest: {manifest}")
-
-    for manifest in [*manifests, merged_manifest]:
-        with open(manifest, newline="", encoding="utf-8") as handle:
-            reader = csv.DictReader(handle)
-            if "cluster_id" in (reader.fieldnames or []) and any(
-                (row.get("cluster_id") or "").strip() for row in reader
-            ):
-                pytest.skip(
-                    "post-registry state: pre-registry baseline no longer applies"
-                )
+    merged_manifest = data / "merged_dataset" / "manifest.csv"
+    registry = data / "global_split_registry.csv"
+    for path in [*manifests, merged_manifest, registry]:
+        if not path.is_file():
+            pytest.skip(f"missing rebuilt dataset artifact: {path}")
 
     sources = [
         spec(manifest, "source", name)
         for name, manifest in zip(names, manifests)
     ]
-    merged_specs = [
-        spec(merged_manifest, "merged", "merged_dataset_balanced")
-    ]
-    result = vdi.verify(sources, merged_specs)
+    merged_specs = [spec(merged_manifest, "merged", "merged_dataset")]
+    result = vdi.verify(sources, merged_specs, registry)
 
-    assert result.passed is False
-    assert result.source_split_conflicts.count == 659
-    assert result.source_split_conflicts.images == 1396
-    assert result.merged_trainval_vs_source_test.count == 1352
-    assert result.merged_trainval_vs_source_test.images == 1352
-    assert result.merged_test_vs_source_trainval.count == 1183
-    assert result.merged_test_vs_source_trainval.images == 1183
+    assert result.passed is True
+    assert result.identity_key == "cluster_id"
+    assert result.source_split_conflicts.count == 0
+    assert result.merged_trainval_vs_source_test.count == 0
+    assert result.merged_test_vs_source_trainval.count == 0
     assert result.merged_duplicate_identities.count == 0
+    assert result.registry_label_consistency is not None
+    assert result.registry_label_consistency.passed is True
 
-    argv = ["--merged", str(merged_manifest)]
+    argv = ["--registry", str(registry), "--merged", str(merged_manifest)]
     for manifest in manifests:
         argv.extend(["--source", str(manifest)])
-    assert vdi.main(argv) == 1
+    assert vdi.main(argv) == 0
+    assert "RESULT: PASS" in capsys.readouterr().out
 
 
 def test_sources_only_does_not_require_a_merged_manifest(

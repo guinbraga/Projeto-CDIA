@@ -1,6 +1,0 @@
-outs:
-- md5: 6c7812f61e7d2089f37a0cd4bae90912.dir
-  size: 178793437
-  nfiles: 9308
-  hash: md5
-  path: roboflow_convertido_split

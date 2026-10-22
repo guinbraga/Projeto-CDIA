@@ -34,8 +34,8 @@ stages:
       size: 9106
     - path: scripts/merge_datasets.py
       hash: md5
-      md5: 619c278aa89e7e7fb8ea0177fcdf6b0d
-      size: 29701
+      md5: 5f6ec879f2f30eaa113b011921e0093c
+      size: 32328
     params:
       params.yaml:
         merge.seed: 42
@@ -113,8 +113,8 @@ stages:
       size: 15961
     - path: scripts/merge_datasets.py
       hash: md5
-      md5: 619c278aa89e7e7fb8ea0177fcdf6b0d
-      size: 29701
+      md5: 5f6ec879f2f30eaa113b011921e0093c
+      size: 32328
     params:
       params.yaml:
         registry.seed: 42
@@ -129,3 +129,111 @@ stages:
       hash: md5
       md5: 281a26d20bddd9e08bcce0986c5518f9
       size: 2594
+  source-splits:
+    cmd: python3 scripts/split_dataset.py --registry 
+      data/global_split_registry.csv --content-index data/content_index.csv 
+      --overwrite
+    deps:
+    - path: data/content_index.csv
+      hash: md5
+      md5: 30a7d344fd05afb95bc8bbcae261a76c
+      size: 6925280
+    - path: data/global_split_registry.csv
+      hash: md5
+      md5: 8bff93a05f9fd9de6e3ab1d3dcf6cc82
+      size: 2019703
+    - path: data/kaggle_dataset/convertido
+      hash: md5
+      md5: 3d67bbb9e04ca244b38f26fe5dde963a.dir
+      size: 3645655485
+      nfiles: 9882
+    - path: data/roboflow_convertido/merged
+      hash: md5
+      md5: f5c12b906fe2bc573eb5aadcbf93bafd.dir
+      size: 175492023
+      nfiles: 9313
+    - path: data/trashbox/TrashBox_train_set
+      hash: md5
+      md5: 3fa956080b558885348edd52f25e0681.dir
+      size: 2238450427
+      nfiles: 14024
+    - path: data/trashnet/dataset-resized
+      hash: md5
+      md5: 8821c401318c37c670a4ef957ce99483.dir
+      size: 41262675
+      nfiles: 2384
+    - path: scripts/dataset_io.py
+      hash: md5
+      md5: 80943f8c344b7e4d2c3c0bd640d0bfff
+      size: 9106
+    - path: scripts/split_dataset.py
+      hash: md5
+      md5: a27444154d4f47e2c8e1312243d395b8
+      size: 15782
+    outs:
+    - path: data/kaggle_dataset_split
+      hash: md5
+      md5: 3bb58ba9e1e194941cbe395c16d14c0f.dir
+      size: 3647989753
+      nfiles: 9855
+    - path: data/roboflow_convertido_split
+      hash: md5
+      md5: 6c7812f61e7d2089f37a0cd4bae90912.dir
+      size: 178793437
+      nfiles: 9308
+    - path: data/trashbox_split
+      hash: md5
+      md5: e29e9ea5d1566cbc1db498acb26bd983.dir
+      size: 2216880652
+      nfiles: 14004
+    - path: data/trashnet_split
+      hash: md5
+      md5: 59afda74b55b9d1737c16a457a0cff05.dir
+      size: 41451509
+      nfiles: 2357
+  verify:
+    cmd: python3 scripts/merge_datasets.py --verify-existing data/merged_dataset
+      --seed 42 --registry data/global_split_registry.csv && python3 
+      scripts/verify_dataset_isolation.py --registry 
+      data/global_split_registry.csv --merged data/merged_dataset
+    deps:
+    - path: data/global_split_registry.csv
+      hash: md5
+      md5: 8bff93a05f9fd9de6e3ab1d3dcf6cc82
+      size: 2019703
+    - path: data/kaggle_dataset_split
+      hash: md5
+      md5: 3bb58ba9e1e194941cbe395c16d14c0f.dir
+      size: 3647989753
+      nfiles: 9855
+    - path: data/merged_dataset
+      hash: md5
+      md5: 0d90cefd0d230110090207b13df8548f.dir
+      size: 2697895553
+      nfiles: 15708
+    - path: data/roboflow_convertido_split
+      hash: md5
+      md5: 6c7812f61e7d2089f37a0cd4bae90912.dir
+      size: 178793437
+      nfiles: 9308
+    - path: data/trashbox_split
+      hash: md5
+      md5: e29e9ea5d1566cbc1db498acb26bd983.dir
+      size: 2216880652
+      nfiles: 14004
+    - path: data/trashnet_split
+      hash: md5
+      md5: 59afda74b55b9d1737c16a457a0cff05.dir
+      size: 41451509
+      nfiles: 2357
+    - path: scripts/merge_datasets.py
+      hash: md5
+      md5: 5f6ec879f2f30eaa113b011921e0093c
+      size: 32328
+    - path: scripts/verify_dataset_isolation.py
+      hash: md5
+      md5: fff4b2df334541a51774f3f0dc991a44
+      size: 20975
+    params:
+      params.yaml:
+        merge.seed: 42

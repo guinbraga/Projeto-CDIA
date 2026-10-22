@@ -16,7 +16,7 @@ canonical split.
 Example usage::
 
     python3 scripts/verify_dataset_isolation.py \\
-        --merged data/merged_dataset_balanced
+        --merged data/merged_dataset
     python3 scripts/verify_dataset_isolation.py --registry data/registry.csv
 """
 
@@ -42,7 +42,7 @@ _DEFAULT_SOURCE_NAMES = (
     "trashbox_split",
     "roboflow_convertido_split",
 )
-_DEFAULT_MERGED_NAMES = ("merged_dataset", "merged_dataset_balanced")
+_DEFAULT_MERGED_NAMES = ("merged_dataset",)
 
 
 class ConfigError(Exception):

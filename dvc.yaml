@@ -2,6 +2,11 @@
 # DVC hashes all of them into dvc.lock, so the exact state that produced a
 # given merged_dataset is recoverable from git.
 #
+# The pipeline rebuilds raw sources -> content index -> global split registry
+# -> four source splits -> merged dataset -> verification. The verify stage is
+# a hard gate: it re-validates the merge balance contract and the cross-dataset
+# isolation invariant, and must pass before the pipeline is reproducible.
+#
 #   dvc repro          -> re-run stages whose deps/params changed
 #   dvc status         -> show what is stale
 #   dvc dag            -> show the dependency graph
@@ -40,6 +45,27 @@ stages:
       - data/global_split_registry.csv
       - reports/global_split_registry/excluded_ambiguous_clusters.csv
 
+  source-splits:
+    cmd: >-
+      python3 scripts/split_dataset.py
+      --registry data/global_split_registry.csv
+      --content-index data/content_index.csv
+      --overwrite
+    deps:
+      - scripts/split_dataset.py
+      - scripts/dataset_io.py
+      - data/global_split_registry.csv
+      - data/content_index.csv
+      - data/kaggle_dataset/convertido
+      - data/roboflow_convertido/merged
+      - data/trashbox/TrashBox_train_set
+      - data/trashnet/dataset-resized
+    outs:
+      - data/trashnet_split
+      - data/kaggle_dataset_split
+      - data/trashbox_split
+      - data/roboflow_convertido_split
+
   merge:
     cmd: >-
       python3 scripts/merge_datasets.py
@@ -58,3 +84,24 @@ stages:
       - merge.seed
     outs:
       - data/merged_dataset
+
+  verify:
+    cmd: >-
+      python3 scripts/merge_datasets.py
+      --verify-existing data/merged_dataset
+      --seed ${merge.seed}
+      --registry data/global_split_registry.csv &&
+      python3 scripts/verify_dataset_isolation.py
+      --registry data/global_split_registry.csv
+      --merged data/merged_dataset
+    deps:
+      - scripts/merge_datasets.py
+      - scripts/verify_dataset_isolation.py
+      - data/global_split_registry.csv
+      - data/trashnet_split
+      - data/kaggle_dataset_split
+      - data/trashbox_split
+      - data/roboflow_convertido_split
+      - data/merged_dataset
+    params:
+      - merge.seed

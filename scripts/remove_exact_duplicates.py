@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Remove md5-identical duplicate images from the four source datasets.
 
+This script is no longer part of the dataset pipeline. The content index plus
+the global split registry replaced manual duplicate removal and cross-dataset
+quarantine, and this script is retained only to reproduce historical reports.
+
 Consumes ``exact_duplicates_by_dataset.csv`` (written by
 analyze_duplicate_images.py) and groups its rows by ``(dataset, md5)``.
 
@@ -280,6 +284,11 @@ def print_summary(before, removed, datasets):
 
 def main(argv=None):
     args = parse_args(argv)
+    print(
+        "[aviso] remove_exact_duplicates.py está supersedido: o índice de "
+        "conteúdo + registro global substituem a quarentena manual; use dvc repro.",
+        file=sys.stderr,
+    )
 
     try:
         rows = load_rows(args.csv)

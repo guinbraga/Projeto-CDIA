@@ -461,3 +461,64 @@ def test_main_dry_run_does_not_create_the_output(tmp_path):
 
     assert exit_code == 0
     assert not output.exists()
+
+
+def _materialised_fixture(tmp_path: Path) -> tuple[Path, list[str]]:
+    registry_path = tmp_path / "registry.csv"
+    source = tmp_path / "source_split"
+    output = tmp_path / "merged"
+    write_registry(
+        registry_path,
+        [
+            registry_row("a1", "cardboard", "train"),
+            registry_row("a2", "cardboard", "train"),
+            registry_row("t1", "cardboard", "test"),
+        ],
+    )
+    write_source_manifest(
+        source,
+        [
+            image("a1", A),
+            image("a2", A),
+            image("t1", A, split="test"),
+        ],
+        (10, 20, 30),
+    )
+    argv = [
+        "--registry",
+        str(registry_path),
+        "--source-manifest",
+        str(source),
+        "--output",
+        str(output),
+        "--seed",
+        "42",
+    ]
+    assert merge_datasets.main(argv) == 0
+    return output, argv
+
+
+def test_verify_existing_accepts_the_materialised_output(tmp_path):
+    output, argv = _materialised_fixture(tmp_path)
+
+    assert (
+        merge_datasets.main([*argv, "--verify-existing", str(output)]) == 0
+    )
+
+
+def test_verify_existing_rejects_a_changed_manifest(tmp_path, capsys):
+    output, argv = _materialised_fixture(tmp_path)
+    rows = [
+        row
+        for row in dataset_io.read_manifest(output)
+        if row["cluster_id"] != "a2"
+    ]
+    with open(output / "manifest.csv", "w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)
+
+    code = merge_datasets.main([*argv, "--verify-existing", str(output)])
+
+    assert code == 1
+    assert "does not match the registry plan" in capsys.readouterr().err
