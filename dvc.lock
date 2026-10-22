@@ -89,3 +89,37 @@ stages:
       hash: md5
       md5: 4b518656d1f97c5276f75b4703012c02
       size: 25
+  global-split-registry:
+    cmd: python3 scripts/global_split_registry.py --seed 42 --val-ratio 0.15 
+      --test-ratio 0.15
+    deps:
+    - path: data/content_index.csv
+      hash: md5
+      md5: 30a7d344fd05afb95bc8bbcae261a76c
+      size: 6925280
+    - path: scripts/dataset_io.py
+      hash: md5
+      md5: 16b75ce3abb911505605283426a67c70
+      size: 8709
+    - path: scripts/global_split_registry.py
+      hash: md5
+      md5: 11dc496f1fba01b09ce10d193fe3441e
+      size: 15961
+    - path: scripts/merge_datasets.py
+      hash: md5
+      md5: b3a84336733e46461279f662d4a69c95
+      size: 18518
+    params:
+      params.yaml:
+        registry.seed: 42
+        registry.test_ratio: 0.15
+        registry.val_ratio: 0.15
+    outs:
+    - path: data/global_split_registry.csv
+      hash: md5
+      md5: 8bff93a05f9fd9de6e3ab1d3dcf6cc82
+      size: 2019703
+    - path: reports/global_split_registry/excluded_ambiguous_clusters.csv
+      hash: md5
+      md5: 281a26d20bddd9e08bcce0986c5518f9
+      size: 2594

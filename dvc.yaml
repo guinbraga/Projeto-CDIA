@@ -21,6 +21,25 @@ stages:
       - data/content_index.csv
       - reports/content_index/unreadable_images.csv
 
+  global-split-registry:
+    cmd: >-
+      python3 scripts/global_split_registry.py
+      --seed ${registry.seed}
+      --val-ratio ${registry.val_ratio}
+      --test-ratio ${registry.test_ratio}
+    deps:
+      - scripts/global_split_registry.py
+      - scripts/dataset_io.py
+      - scripts/merge_datasets.py
+      - data/content_index.csv
+    params:
+      - registry.seed
+      - registry.val_ratio
+      - registry.test_ratio
+    outs:
+      - data/global_split_registry.csv
+      - reports/global_split_registry/excluded_ambiguous_clusters.csv
+
   merge:
     cmd: >-
       python3 scripts/merge_datasets.py

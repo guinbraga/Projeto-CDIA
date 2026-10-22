@@ -471,3 +471,129 @@ def test_real_data_baseline_pre_registry() -> None:
     for manifest in manifests:
         argv.extend(["--source", str(manifest)])
     assert vdi.main(argv) == 1
+
+
+def write_cluster_registry(
+    path: Path,
+    rows: list[dict[str, str]],
+    fields: list[str] | None = None,
+) -> Path:
+    return write_csv(
+        path, rows, fields or ["cluster_id", "class", "split", "n_images"]
+    )
+
+
+def test_registry_only_verify_passes(tmp_path: Path) -> None:
+    registry = write_cluster_registry(
+        tmp_path / "global_split_registry.csv",
+        [
+            {"cluster_id": "c1", "class": "A", "split": "train"},
+            {"cluster_id": "c2", "class": "B", "split": "val"},
+            {"cluster_id": "c3", "class": "A", "split": "test"},
+        ],
+    )
+
+    result = vdi.verify([], [], registry)
+
+    assert result.passed is True
+    assert result.identity_key == "cluster_id"
+    assert result.registry_label_consistency is None
+
+    report = vdi.format_report(result)
+    assert "[identity] cluster_id" in report
+    assert "registry split labels: skipped" in report
+    assert "RESULT: PASS" in report
+
+
+def test_registry_only_main_passes(tmp_path: Path, capsys) -> None:
+    registry = write_cluster_registry(
+        tmp_path / "global_split_registry.csv",
+        [
+            {"cluster_id": "c1", "class": "A", "split": "train"},
+            {"cluster_id": "c2", "class": "B", "split": "test"},
+        ],
+    )
+
+    assert vdi.main(["--registry", str(registry)]) == 0
+    assert "RESULT: PASS" in capsys.readouterr().out
+
+
+def test_registry_only_duplicate_cluster_id_exits_2(
+    tmp_path: Path, capsys
+) -> None:
+    registry = write_cluster_registry(
+        tmp_path / "duplicate.csv",
+        [
+            {"cluster_id": "c1", "class": "A", "split": "train"},
+            {"cluster_id": "c1", "class": "A", "split": "test"},
+        ],
+    )
+
+    code = vdi.main(["--registry", str(registry)])
+    captured = capsys.readouterr()
+    assert code == 2
+    assert "[erro]" in captured.err
+    assert "Traceback" not in captured.err
+
+
+def test_registry_only_invalid_split_exits_2(tmp_path: Path, capsys) -> None:
+    registry = write_cluster_registry(
+        tmp_path / "invalid_split.csv",
+        [{"cluster_id": "c1", "class": "A", "split": "bogus"}],
+    )
+
+    code = vdi.main(["--registry", str(registry)])
+    captured = capsys.readouterr()
+    assert code == 2
+    assert "[erro]" in captured.err
+    assert "Traceback" not in captured.err
+
+
+def test_registry_only_missing_identity_column_exits_2(
+    tmp_path: Path, capsys
+) -> None:
+    registry = write_csv(
+        tmp_path / "no_identity.csv",
+        [{"split": "train"}],
+        ["split"],
+    )
+
+    code = vdi.main(["--registry", str(registry)])
+    captured = capsys.readouterr()
+    assert code == 2
+    assert "[erro]" in captured.err
+    assert "Traceback" not in captured.err
+
+
+def test_registry_only_md5_keying(tmp_path: Path) -> None:
+    registry = write_registry(
+        tmp_path / "md5_registry.csv",
+        [
+            {"md5": "m1", "split": "train"},
+            {"md5": "m2", "split": "test"},
+        ],
+    )
+
+    result = vdi.verify([], [], registry)
+
+    assert result.passed is True
+    assert result.identity_key == "md5"
+    assert "[identity] md5" in vdi.format_report(result)
+
+
+def test_registry_only_without_class_column_is_tolerated(
+    tmp_path: Path,
+) -> None:
+    registry = write_csv(
+        tmp_path / "no_class.csv",
+        [
+            {"cluster_id": "c1", "split": "train"},
+            {"cluster_id": "c2", "split": "test"},
+        ],
+        ["cluster_id", "split"],
+    )
+
+    result = vdi.verify([], [], registry)
+
+    assert result.passed is True
+    assert result.identity_key == "cluster_id"

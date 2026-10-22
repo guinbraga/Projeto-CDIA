@@ -106,6 +106,7 @@ class VerificationResult:
     merged_test_vs_source_trainval: Check
     merged_duplicate_identities: Check
     registry_label_consistency: Check | None = None
+    identity_key: str = "md5"
 
     @property
     def passed(self) -> bool:
@@ -218,22 +219,36 @@ def _parse_manifest(spec: DatasetSpec) -> tuple[list[ManifestRow], str]:
     return rows, identity_key
 
 
-def _read_registry(
-    registry: Path, identity_key: str
-) -> dict[str, str]:
-    if not registry.is_file():
-        raise ConfigError(f"registry not found: {registry}")
-    fieldnames, rows = _read_csv(registry)
-    other_key = "md5" if identity_key == "cluster_id" else "cluster_id"
-    if identity_key not in fieldnames:
+def _resolve_registry_key(
+    registry: Path, fieldnames: list[str], manifest_key: str | None
+) -> str:
+    if manifest_key is not None:
+        if manifest_key in fieldnames:
+            return manifest_key
+        other_key = "md5" if manifest_key == "cluster_id" else "cluster_id"
         if other_key in fieldnames:
             raise ConfigError(
                 f"registry {registry} uses '{other_key}' but manifests use "
-                f"'{identity_key}'"
+                f"'{manifest_key}'"
             )
         raise ConfigError(
-            f"registry {registry}: missing identity column '{identity_key}'"
+            f"registry {registry}: missing identity column '{manifest_key}'"
         )
+    for column in _IDENTITY_COLUMNS:
+        if column in fieldnames:
+            return column
+    raise ConfigError(
+        f"registry {registry}: missing identity column (expected md5 or cluster_id)"
+    )
+
+
+def _load_registry(
+    registry: Path, manifest_key: str | None
+) -> tuple[dict[str, str], str]:
+    if not registry.is_file():
+        raise ConfigError(f"registry not found: {registry}")
+    fieldnames, rows = _read_csv(registry)
+    identity_key = _resolve_registry_key(registry, fieldnames, manifest_key)
     if "split" not in fieldnames:
         raise ConfigError(f"registry {registry}: missing required column 'split'")
     canonical: dict[str, str] = {}
@@ -253,7 +268,7 @@ def _read_registry(
                 f"registry {registry}: duplicate identity '{identity}'"
             )
         canonical[identity] = split
-    return canonical
+    return canonical, identity_key
 
 
 # --------------------------------------------------------------------------- #
@@ -393,16 +408,18 @@ def verify(
     if len(distinct_keys) > 1:
         detail = ", ".join(f"{name}={key}" for name, key in identity_keys.items())
         raise ConfigError(f"mixed identity keys across manifests: {detail}")
-    identity_key = next(iter(distinct_keys), "md5")
+    manifest_key = next(iter(distinct_keys), None)
 
     all_rows = [row for rows in parsed for row in rows]
     source_rows = [row for row in all_rows if row.kind == "source"]
     merged_rows = [row for row in all_rows if row.kind == "merged"]
 
     registry_check: Check | None = None
+    identity_key = manifest_key or "md5"
     if registry is not None:
-        canonical = _read_registry(registry, identity_key)
-        registry_check = _registry_consistency(all_rows, canonical)
+        canonical, identity_key = _load_registry(registry, manifest_key)
+        if all_rows:
+            registry_check = _registry_consistency(all_rows, canonical)
 
     return VerificationResult(
         datasets=specs,
@@ -424,6 +441,7 @@ def verify(
         ),
         merged_duplicate_identities=_merged_duplicates(merged_rows),
         registry_label_consistency=registry_check,
+        identity_key=identity_key,
     )
 
 
@@ -471,9 +489,8 @@ def format_report(result: VerificationResult, max_examples: int = 5) -> str:
     """Render the deterministic plain-text report printed by the CLI."""
     source_names = [d.name for d in result.datasets if d.kind == "source"]
     merged_names = [d.name for d in result.datasets if d.kind == "merged"]
-    identity_key = next(iter(result.identity_keys.values()), "md5")
     lines = [
-        f"[identity] {identity_key}",
+        f"[identity] {result.identity_key}",
         f"[sources] {_format_names(source_names)}",
         f"[merged] {_format_names(merged_names)}",
     ]
@@ -486,7 +503,8 @@ def format_report(result: VerificationResult, max_examples: int = 5) -> str:
     ]
     for check, is_registry in checks:
         if check is None:
-            lines.append("[check] registry split labels: skipped")
+            if is_registry:
+                lines.append("[check] registry split labels: skipped")
             continue
         status = "PASS" if check.passed else "FAIL"
         missing_suffix = (
@@ -561,16 +579,20 @@ def main(argv: list[str] | None = None) -> int:
         return int(exc.code) if isinstance(exc.code, int) else 2
 
     try:
-        sources = (
-            [_spec_for(path, "source") for path in args.source]
-            if args.source
-            else _default_sources(args.data_root)
-        )
-        merged = (
-            [_spec_for(path, "merged") for path in args.merged]
-            if args.merged
-            else _default_merged(args.data_root)
-        )
+        if args.registry is not None and not args.source and not args.merged:
+            sources: list[DatasetSpec] = []
+            merged: list[DatasetSpec] = []
+        else:
+            sources = (
+                [_spec_for(path, "source") for path in args.source]
+                if args.source
+                else _default_sources(args.data_root)
+            )
+            merged = (
+                [_spec_for(path, "merged") for path in args.merged]
+                if args.merged
+                else _default_merged(args.data_root)
+            )
         result = verify(sources, merged, args.registry)
     except ConfigError as exc:
         print(f"[erro] {exc}", file=sys.stderr)
