@@ -45,17 +45,16 @@ stages:
       python3 scripts/merge_datasets.py
       --overwrite
       --seed ${merge.seed}
-      --val-ratio ${merge.val_ratio}
-      --test-ratio ${merge.test_ratio}
+      --registry data/global_split_registry.csv
     deps:
       - scripts/merge_datasets.py
-      - data/trashnet/dataset-resized
-      - data/kaggle_dataset/convertido
-      - data/trashbox/TrashBox_train_set
-      - data/roboflow_convertido/merged
+      - scripts/dataset_io.py
+      - data/global_split_registry.csv
+      - data/trashnet_split
+      - data/kaggle_dataset_split
+      - data/trashbox_split
+      - data/roboflow_convertido_split
     params:
       - merge.seed
-      - merge.val_ratio
-      - merge.test_ratio
     outs:
       - data/merged_dataset
