@@ -1,59 +1,38 @@
 #!/usr/bin/env python3
-"""Split a single class-folder dataset into train/val/test (70/15/15).
+"""Materialise source datasets as projections of the global split registry.
 
-Each subdirectory that directly contains images is treated as a class.  The
-split is **stratified by class**: every class is shuffled and divided
-independently, using the same sizing rule as ``merge_datasets.py``
-(``split_sizes``), so the class distribution is preserved in every split.
+An image's split and class are not chosen here: both come from the row of the
+content cluster that the image belongs to.  Every image of an included cluster
+is kept, so near-duplicate members always land in the same split.  Images whose
+cluster is ``ambiguous_class`` are excluded.
 
 The low-level I/O primitives (discovery, survey, materialisation, manifest) live
 in ``scripts/dataset_io.py``.
-
-Equivalence with ``merged_dataset``
------------------------------------
-``scripts/merge_datasets.py`` builds ``data/merged_dataset`` with the very same
-70/15/15 procedure, stratified by ``(class, source)``.  This script applies that
-procedure to one already-aggregated dataset at a time.  Each dataset is split
-with a fresh ``random.Random(seed)``, therefore ``--dataset trashbox`` produces
-exactly the same assignment as running the split for all three presets.  Dedupe
-and cleaning are upstream (``remove_exact_duplicates.py``); this script only
-splits, it does not deduplicate.
 
 Output layout
 -------------
 ::
 
-    <output>/
+    <data-root>/<dataset>_split/
         train/<class>/*.jpg
         val/<class>/*.jpg
         test/<class>/*.jpg
         manifest.csv
 
-``train_efficientnet.py`` consumes this layout directly.
-
-By default each preset under ``<data-root>`` is written to
-``<data-root>/<dataset>_split``:
-
-* ``data/roboflow_convertido_split``
-* ``data/kaggle_dataset_split``
-* ``data/trashbox_split``
+``train_efficientnet.py`` consumes this layout directly.  The manifest adds a
+``cluster_id`` column to the historical provenance fields.
 
 Usage
 -----
-Split all three presets (default: ``./data``)::
+Rebuild all four presets (default: ``./data``)::
 
     python scripts/split_dataset.py
 
-Split one preset::
+Rebuild one preset::
 
     python scripts/split_dataset.py --dataset trashbox
 
-Split an arbitrary class-folder directory::
-
-    python scripts/split_dataset.py \\
-        --source /path/to/dataset --output /path/to/dataset_split
-
-Preview the plan without writing anything::
+Preview the projection without writing anything::
 
     python scripts/split_dataset.py --dry-run
 """
@@ -61,9 +40,10 @@ Preview the plan without writing anything::
 from __future__ import annotations
 
 import argparse
+import csv
 import os
-import random
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 import dataset_io
@@ -75,14 +55,51 @@ import dataset_io
 REPO_ROOT: Path = Path(__file__).resolve().parent.parent
 
 #: Preset source datasets, relative to ``--data-root``.
-DEFAULT_DATASETS: dict[str, Path] = {
-    "roboflow_convertido": Path("roboflow_convertido/merged"),
+PRESETS: dict[str, Path] = {
+    "trashnet": Path("trashnet/dataset-resized"),
     "kaggle_dataset": Path("kaggle_dataset/convertido"),
     "trashbox": Path("trashbox/TrashBox_train_set"),
+    "roboflow_convertido": Path("roboflow_convertido/merged"),
 }
 
-#: Kept as a module-level alias for backwards compatibility.
-split_sizes = dataset_io.split_sizes
+DEFAULT_DATASETS: dict[str, Path] = PRESETS
+
+_AMBIGUOUS_STATUS = "ambiguous_class"
+
+
+class ProjectionError(Exception):
+    """Raised when the registry or content index cannot drive the projection."""
+
+
+@dataclass(frozen=True)
+class RegistryProjection:
+    cls: str
+    split: str
+
+
+@dataclass(frozen=True)
+class IndexIdentity:
+    cluster_id: str
+    md5: str
+    cluster_status: str
+
+
+@dataclass
+class Projection:
+    """One source dataset projected through the registry.
+
+    ``records``, ``infos`` and ``cluster_ids`` are consumed by
+    :func:`dataset_io.materialize`; the remaining fields only drive reporting.
+    """
+
+    records: dict[str, list[tuple[str, str, Path]]]
+    total_readable: int
+    included: int
+    excluded_ambiguous: int
+    invalid: list[tuple[Path, str]]
+    counts: dict[tuple[str, str], int]
+    infos: dict[Path, dataset_io.ImageInfo]
+    cluster_ids: dict[Path, str]
 
 
 # --------------------------------------------------------------------------- #
@@ -142,41 +159,159 @@ def discover_classes(
 
 
 # --------------------------------------------------------------------------- #
-# Sizing / planning (identical to merge_datasets.py)
+# Registry / index input
 # --------------------------------------------------------------------------- #
 
 
-def plan_split(
-    classes: dict[str, list[Path]],
-    rng: random.Random,
-    val_ratio: float,
-    test_ratio: float,
-) -> tuple[
-    dict[str, list[tuple[str, Path]]],
-    dict[str, tuple[int, int, int]],
-]:
-    """Stratify by class: shuffle and split each class independently.
+def _open_csv(path: Path, label: str) -> tuple[list[str], list[dict[str, str]]]:
+    try:
+        with open(path, newline="", encoding="utf-8") as handle:
+            reader = csv.DictReader(handle)
+            return list(reader.fieldnames or []), list(reader)
+    except OSError as exc:
+        raise ProjectionError(
+            f"não foi possível ler {label} '{path}': {exc}"
+        ) from exc
 
-    Returns ``split_name -> [(class, path), ...]`` and
-    ``class -> (n_train, n_val, n_test)``.
-    """
-    splits: dict[str, list[tuple[str, Path]]] = {
+
+def read_registry(path: Path) -> dict[str, RegistryProjection]:
+    fieldnames, rows = _open_csv(path, "o registro global")
+    required = ("cluster_id", "class", "split")
+    missing = [column for column in required if column not in fieldnames]
+    if missing:
+        raise ProjectionError(
+            f"registro '{path}' sem colunas obrigatórias: {', '.join(missing)}"
+        )
+
+    registry: dict[str, RegistryProjection] = {}
+    for line, raw in enumerate(rows, start=2):
+        cluster_id = (raw.get("cluster_id") or "").strip()
+        cls = (raw.get("class") or "").strip()
+        split = (raw.get("split") or "").strip()
+        if not cluster_id:
+            raise ProjectionError(
+                f"registro '{path}': cluster_id vazio na linha {line}"
+            )
+        if not cls:
+            raise ProjectionError(
+                f"registro '{path}': classe vazia na linha {line}"
+            )
+        if split not in dataset_io.SPLIT_NAMES:
+            raise ProjectionError(
+                f"registro '{path}': split inválido {split!r} na linha {line}"
+            )
+        if cluster_id in registry:
+            raise ProjectionError(
+                f"registro '{path}': cluster_id duplicado '{cluster_id}'"
+            )
+        registry[cluster_id] = RegistryProjection(cls, split)
+    return registry
+
+
+def read_index_identities(path: Path) -> dict[tuple[str, str], IndexIdentity]:
+    fieldnames, rows = _open_csv(path, "o índice de conteúdo")
+    required = ("cluster_id", "source", "path", "md5", "cluster_status")
+    missing = [column for column in required if column not in fieldnames]
+    if missing:
+        raise ProjectionError(
+            f"índice de conteúdo '{path}' sem colunas obrigatórias: "
+            f"{', '.join(missing)}"
+        )
+
+    identities: dict[tuple[str, str], IndexIdentity] = {}
+    for line, raw in enumerate(rows, start=2):
+        source = (raw.get("source") or "").strip()
+        rel_path = (raw.get("path") or "").strip()
+        key = (source, rel_path)
+        if key in identities:
+            raise ProjectionError(
+                f"índice de conteúdo '{path}': (source, path) duplicado "
+                f"({source}, {rel_path}) na linha {line}"
+            )
+        identities[key] = IndexIdentity(
+            cluster_id=(raw.get("cluster_id") or "").strip(),
+            md5=(raw.get("md5") or "").strip(),
+            cluster_status=(raw.get("cluster_status") or "").strip(),
+        )
+    return identities
+
+
+# --------------------------------------------------------------------------- #
+# Projection
+# --------------------------------------------------------------------------- #
+
+
+def project_source(
+    source_name: str,
+    source_root: Path,
+    data_root: Path,
+    identities: dict[tuple[str, str], IndexIdentity],
+    registry: dict[str, RegistryProjection],
+) -> Projection:
+    classes = discover_classes(source_root)
+    infos, invalid = dataset_io.survey_images({source_name: classes})
+    records: dict[str, list[tuple[str, str, Path]]] = {
         name: [] for name in dataset_io.SPLIT_NAMES
     }
-    counts: dict[str, tuple[int, int, int]] = {}
+    counts: dict[tuple[str, str], int] = {}
+    cluster_ids: dict[Path, str] = {}
+    included = 0
+    excluded_ambiguous = 0
+    root = data_root.resolve()
 
-    for cls in sorted(classes):
-        paths = list(classes[cls])
-        rng.shuffle(paths)
-        n_train, n_val, n_test = split_sizes(len(paths), val_ratio, test_ratio)
-        counts[cls] = (n_train, n_val, n_test)
-        splits["train"].extend((cls, path) for path in paths[:n_train])
-        splits["val"].extend(
-            (cls, path) for path in paths[n_train : n_train + n_val]
+    for path, reason in invalid:
+        rel = path.resolve().relative_to(root).as_posix()
+        if (source_name, rel) in identities:
+            raise ProjectionError(
+                f"imagem '{rel}' ({source_name}) está no índice de conteúdo "
+                f"mas não pôde ser lida ({reason}); índice desatualizado"
+            )
+
+    for path in sorted(infos):
+        rel = path.resolve().relative_to(root).as_posix()
+        identity = identities.get((source_name, rel))
+        if identity is None:
+            raise ProjectionError(
+                f"imagem '{rel}' ({source_name}) não está no índice de conteúdo; "
+                "índice desatualizado"
+            )
+        if infos[path].md5 != identity.md5:
+            raise ProjectionError(
+                f"md5 divergente para '{rel}' ({source_name}); "
+                "índice de conteúdo desatualizado"
+            )
+        if identity.cluster_status == _AMBIGUOUS_STATUS:
+            excluded_ambiguous += 1
+            continue
+
+        projection = registry.get(identity.cluster_id)
+        if projection is None:
+            raise ProjectionError(
+                f"cluster '{identity.cluster_id}' de '{rel}' ({source_name}) "
+                "não está no registro global; registro desatualizado"
+            )
+
+        records[projection.split].append(
+            (projection.cls, source_name, path)
         )
-        splits["test"].extend((cls, path) for path in paths[n_train + n_val :])
+        included += 1
+        count_key = (projection.split, projection.cls)
+        counts[count_key] = counts.get(count_key, 0) + 1
+        cluster_ids[path] = identity.cluster_id
 
-    return splits, counts
+    for name in dataset_io.SPLIT_NAMES:
+        records[name].sort(key=lambda item: (item[0], str(item[2])))
+
+    return Projection(
+        records=records,
+        total_readable=len(infos),
+        included=included,
+        excluded_ambiguous=excluded_ambiguous,
+        invalid=invalid,
+        counts=counts,
+        infos=infos,
+        cluster_ids=cluster_ids,
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -186,11 +321,10 @@ def plan_split(
 
 def print_dataset_plan(
     dataset: str,
-    classes: dict[str, list[Path]],
-    counts: dict[str, tuple[int, int, int]],
+    projection: Projection,
     output: Path,
 ) -> None:
-    print(f"\n[{dataset}] imagens por classe:")
+    print(f"\n[{dataset}] projeção por classe:")
     header = (
         "classe".ljust(20)
         + "total".rjust(8)
@@ -201,31 +335,45 @@ def print_dataset_plan(
     print(header)
     print("-" * len(header))
 
-    for cls in sorted(classes):
-        n_train, n_val, n_test = counts[cls]
+    classes = sorted({cls for _, cls in projection.counts})
+    for cls in classes:
+        n_train = projection.counts.get(("train", cls), 0)
+        n_val = projection.counts.get(("val", cls), 0)
+        n_test = projection.counts.get(("test", cls), 0)
         print(
             cls.ljust(20)
-            + str(len(classes[cls])).rjust(8)
+            + str(n_train + n_val + n_test).rjust(8)
             + str(n_train).rjust(8)
             + str(n_val).rjust(8)
             + str(n_test).rjust(8)
         )
 
-    total = sum(len(paths) for paths in classes.values())
-    total_train = sum(size[0] for size in counts.values())
-    total_val = sum(size[1] for size in counts.values())
-    total_test = sum(size[2] for size in counts.values())
+    split_totals = {
+        split: sum(
+            count
+            for (count_split, _), count in projection.counts.items()
+            if count_split == split
+        )
+        for split in dataset_io.SPLIT_NAMES
+    }
     print(
         "TOTAL".ljust(20)
-        + str(total).rjust(8)
-        + str(total_train).rjust(8)
-        + str(total_val).rjust(8)
-        + str(total_test).rjust(8)
+        + str(projection.included).rjust(8)
+        + str(split_totals["train"]).rjust(8)
+        + str(split_totals["val"]).rjust(8)
+        + str(split_totals["test"]).rjust(8)
     )
     print(
-        f"  total: {total} imagens -> "
-        f"train={total_train} val={total_val} test={total_test}"
+        f"  lidas: {projection.total_readable} | incluídas: {projection.included} | "
+        f"ambíguas excluídas: {projection.excluded_ambiguous}"
     )
+    if projection.invalid:
+        print(
+            f"  [survey] {len(projection.invalid)} imagens ilegíveis/corrompidas "
+            "descartadas"
+        )
+        for path, reason in projection.invalid[:10]:
+            print(f"         - {path}: {reason}")
     print(f"  output: {output}")
 
 
@@ -237,7 +385,8 @@ def print_dataset_plan(
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Divide um dataset de pastas por classe em train/val/test (70/15/15)."
+            "Materializa os datasets de origem como projeções do registro "
+            "global de splits."
         ),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
@@ -248,36 +397,23 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="diretório que contém os datasets predefinidos",
     )
     parser.add_argument(
+        "--registry",
+        type=Path,
+        default=REPO_ROOT / "data" / "global_split_registry.csv",
+        help="registro global de splits (cluster_id,class,split,...)",
+    )
+    parser.add_argument(
+        "--content-index",
+        type=Path,
+        default=REPO_ROOT / "data" / "content_index.csv",
+        help="índice de conteúdo (cluster_id,source,path,md5,...)",
+    )
+    parser.add_argument(
         "--dataset",
         action="append",
-        choices=list(DEFAULT_DATASETS),
+        choices=list(PRESETS),
         default=None,
-        help="dataset predefinido a dividir (pode repetir; padrão: todos)",
-    )
-    parser.add_argument(
-        "--source",
-        type=Path,
-        default=None,
-        help="diretório arbitrário de classes (exige --output)",
-    )
-    parser.add_argument(
-        "--output",
-        type=Path,
-        default=None,
-        help="saída para --source (obrigatório com --source)",
-    )
-    parser.add_argument("--seed", type=int, default=42, help="semente de aleatoriedade")
-    parser.add_argument(
-        "--val-ratio", type=float, default=0.15, help="fração de validação"
-    )
-    parser.add_argument(
-        "--test-ratio", type=float, default=0.15, help="fração de teste"
-    )
-    parser.add_argument(
-        "--validate",
-        action=argparse.BooleanOptionalAction,
-        default=True,
-        help="descarta imagens vazias/corrompidas/ilegíveis",
+        help="dataset predefinido a materializar (pode repetir; padrão: todos)",
     )
     parser.add_argument(
         "--rgb",
@@ -291,7 +427,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="apaga a saída existente antes de gravar",
     )
     parser.add_argument(
-        "--dry-run", action="store_true", help="só mostra o plano, sem gravar arquivos"
+        "--dry-run",
+        action="store_true",
+        help="só mostra a projeção, sem gravar arquivos",
     )
     parser.add_argument(
         "--link",
@@ -299,95 +437,49 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="tenta hardlink em vez de copiar (cai para cópia se falhar)",
     )
 
-    args = parser.parse_args(argv)
-
-    if (args.source is None) != (args.output is None):
-        parser.error("--source e --output devem ser usados juntos")
-    if args.source is not None and args.dataset is not None:
-        parser.error("--source não pode ser combinado com --dataset")
-    if (
-        args.val_ratio < 0
-        or args.test_ratio < 0
-        or args.val_ratio + args.test_ratio >= 1
-    ):
-        parser.error("--val-ratio e --test-ratio devem ser >= 0 e somar menos que 1")
-
-    return args
-
-
-def _jobs(args: argparse.Namespace) -> list[tuple[str, Path, Path]]:
-    if args.source is not None:
-        dataset = args.source.resolve().name or args.source.name or "source"
-        return [(dataset, args.source, args.output)]
-
-    names = args.dataset or list(DEFAULT_DATASETS)
-    return [
-        (
-            name,
-            args.data_root / DEFAULT_DATASETS[name],
-            args.data_root / f"{name}_split",
-        )
-        for name in names
-    ]
+    return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
 
-    for dataset, source, output in _jobs(args):
-        # Fresh RNG per dataset: each split is independent of the others.
-        rng = random.Random(args.seed)
-        classes = discover_classes(source, exclude={output.resolve()})
+    try:
+        registry = read_registry(args.registry)
+        identities = read_index_identities(args.content_index)
+        names = args.dataset or list(DEFAULT_DATASETS)
 
-        infos: dict[Path, dataset_io.ImageInfo] = {}
-        if args.validate or args.rgb:
-            infos, invalid = dataset_io.survey_images({dataset: classes})
-            status = "descartadas" if args.validate else "inválidas (mantidas)"
-            print(
-                f"\n[survey] {dataset}: {len(infos)} imagens válidas; "
-                f"{len(invalid)} {status}"
+        for dataset in names:
+            source = args.data_root / PRESETS[dataset]
+            output = args.data_root / f"{dataset}_split"
+            projection = project_source(
+                dataset, source, args.data_root, identities, registry
             )
-            for path, reason in invalid[:10]:
-                print(f"         - {path}: {reason}")
+            print_dataset_plan(dataset, projection, output)
 
-            if args.validate:
-                classes = {
-                    cls: [path for path in paths if path in infos]
-                    for cls, paths in classes.items()
-                }
-                classes = {cls: paths for cls, paths in classes.items() if paths}
-                if not classes:
-                    raise SystemExit(
-                        f"[erro] nenhuma imagem válida encontrada em {source}"
-                    )
+            if args.dry_run:
+                print("  [dry-run] nada foi gravado para este dataset.")
+                continue
 
-        records, counts = plan_split(
-            classes, rng, args.val_ratio, args.test_ratio
-        )
-        print_dataset_plan(dataset, classes, counts, output)
+            dataset_io.reset_output(output, args.overwrite)
+            manifest, converted = dataset_io.materialize(
+                projection.records,
+                output,
+                projection.infos,
+                use_link=args.link,
+                convert_rgb=args.rgb,
+                cluster_ids=projection.cluster_ids,
+            )
+            dataset_io.write_manifest(
+                manifest, output, dataset_io.MANIFEST_FIELDS_WITH_CLUSTER
+            )
 
-        if args.dry_run:
-            print("  [dry-run] nada foi gravado para este dataset.")
-            continue
-
-        dataset_io.reset_output(output, args.overwrite)
-        records_with_source = {
-            name: [(cls, dataset, path) for cls, path in items]
-            for name, items in records.items()
-        }
-        manifest, converted = dataset_io.materialize(
-            records_with_source,
-            output,
-            infos,
-            use_link=args.link,
-            convert_rgb=args.rgb,
-        )
-        dataset_io.write_manifest(manifest, output)
-
-        print(f"\n[ok] {dataset}: {len(manifest)} imagens gravadas em {output}")
-        if args.rgb:
-            print(f"[ok] {converted} imagens re-codificadas para RGB")
-        print(f"[ok] manifesto: {output / 'manifest.csv'}")
+            print(f"\n[ok] {dataset}: {len(manifest)} imagens gravadas em {output}")
+            if args.rgb:
+                print(f"[ok] {converted} imagens re-codificadas para RGB")
+            print(f"[ok] manifesto: {output / 'manifest.csv'}")
+    except ProjectionError as exc:
+        print(f"[erro] {exc}", file=sys.stderr)
+        return 2
 
     if args.dry_run:
         print("\n[dry-run] nada foi gravado.")

@@ -570,7 +570,15 @@ def main(argv: list[str] | None = None) -> int:
         "--data-root", type=Path, default=_REPO_ROOT / "data"
     )
     parser.add_argument("--source", action="append", type=Path, default=None)
-    parser.add_argument("--merged", action="append", type=Path, default=None)
+    merged_group = parser.add_mutually_exclusive_group()
+    merged_group.add_argument(
+        "--merged", action="append", type=Path, default=None
+    )
+    merged_group.add_argument(
+        "--sources-only",
+        action="store_true",
+        help="skip the merged manifest and gate the source splits alone",
+    )
     parser.add_argument("--registry", type=Path, default=None)
     parser.add_argument("--max-examples", type=int, default=5)
     try:
@@ -579,7 +587,12 @@ def main(argv: list[str] | None = None) -> int:
         return int(exc.code) if isinstance(exc.code, int) else 2
 
     try:
-        if args.registry is not None and not args.source and not args.merged:
+        if (
+            args.registry is not None
+            and not args.source
+            and not args.merged
+            and not args.sources_only
+        ):
             sources: list[DatasetSpec] = []
             merged: list[DatasetSpec] = []
         else:
@@ -588,11 +601,12 @@ def main(argv: list[str] | None = None) -> int:
                 if args.source
                 else _default_sources(args.data_root)
             )
-            merged = (
-                [_spec_for(path, "merged") for path in args.merged]
-                if args.merged
-                else _default_merged(args.data_root)
-            )
+            if args.merged:
+                merged = [_spec_for(path, "merged") for path in args.merged]
+            elif args.sources_only:
+                merged = []
+            else:
+                merged = _default_merged(args.data_root)
         result = verify(sources, merged, args.registry)
     except ConfigError as exc:
         print(f"[erro] {exc}", file=sys.stderr)

@@ -473,6 +473,115 @@ def test_real_data_baseline_pre_registry() -> None:
     assert vdi.main(argv) == 1
 
 
+def test_sources_only_does_not_require_a_merged_manifest(
+    tmp_path: Path, capsys
+) -> None:
+    fields = ["split", "class", "cluster_id", "dst_path"]
+    source_a = write_manifest(
+        tmp_path / "src_a" / "manifest.csv",
+        [
+            {
+                "split": "train",
+                "class": "A",
+                "cluster_id": "c1",
+                "dst_path": "/tmp/a.jpg",
+            }
+        ],
+        fields,
+    )
+    source_b = write_manifest(
+        tmp_path / "src_b" / "manifest.csv",
+        [
+            {
+                "split": "test",
+                "class": "A",
+                "cluster_id": "c2",
+                "dst_path": "/tmp/b.jpg",
+            }
+        ],
+        fields,
+    )
+
+    code = vdi.main(
+        [
+            "--data-root",
+            str(tmp_path),
+            "--sources-only",
+            "--source",
+            str(source_a),
+            "--source",
+            str(source_b),
+        ]
+    )
+
+    assert code == 0
+    assert "RESULT: PASS" in capsys.readouterr().out
+
+
+def test_sources_only_loads_default_sources_with_registry(
+    tmp_path: Path, capsys
+) -> None:
+    fields = ["split", "class", "cluster_id", "dst_path"]
+    names = (
+        "trashnet_split",
+        "kaggle_dataset_split",
+        "trashbox_split",
+        "roboflow_convertido_split",
+    )
+    registry_rows = []
+    for number, (name, split) in enumerate(zip(names, ("train", "val", "test", "train"))):
+        cluster_id = f"c{number}"
+        write_manifest(
+            tmp_path / name / "manifest.csv",
+            [
+                {
+                    "split": split,
+                    "class": "A",
+                    "cluster_id": cluster_id,
+                    "dst_path": f"/tmp/{cluster_id}.jpg",
+                }
+            ],
+            fields,
+        )
+        registry_rows.append(
+            {"cluster_id": cluster_id, "class": "A", "split": split}
+        )
+    registry = write_cluster_registry(
+        tmp_path / "global_split_registry.csv", registry_rows
+    )
+
+    code = vdi.main(
+        [
+            "--data-root",
+            str(tmp_path),
+            "--sources-only",
+            "--registry",
+            str(registry),
+        ]
+    )
+
+    printed = capsys.readouterr().out
+    assert code == 0
+    assert "trashnet_split" in printed
+    assert "registry split labels: skipped" not in printed
+    assert "RESULT: PASS" in printed
+
+
+def test_sources_only_conflicts_with_merged(
+    tmp_path: Path, capsys
+) -> None:
+    merged = write_manifest(
+        tmp_path / "merged_a" / "manifest.csv", [make_row("m1", "train")]
+    )
+
+    code = vdi.main(["--sources-only", "--merged", str(merged)])
+
+    captured = capsys.readouterr()
+    assert code == 2
+    assert "[erro]" not in captured.err
+    assert "not allowed with argument" in captured.err
+
+
 def write_cluster_registry(
     path: Path,
     rows: list[dict[str, str]],

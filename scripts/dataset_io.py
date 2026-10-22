@@ -13,6 +13,7 @@ import csv
 import hashlib
 import os
 import shutil
+from collections.abc import Mapping
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
@@ -36,6 +37,8 @@ IMAGE_EXTENSIONS: frozenset[str] = frozenset(
 
 SPLIT_NAMES: tuple[str, ...] = ("train", "val", "test")
 
+CLUSTER_ID_FIELD = "cluster_id"
+
 MANIFEST_FIELDS: tuple[str, ...] = (
     "split",
     "class",
@@ -44,6 +47,10 @@ MANIFEST_FIELDS: tuple[str, ...] = (
     "mode",
     "src_path",
     "dst_path",
+)
+
+MANIFEST_FIELDS_WITH_CLUSTER: tuple[str, ...] = (
+    MANIFEST_FIELDS[:3] + (CLUSTER_ID_FIELD,) + MANIFEST_FIELDS[3:]
 )
 
 #: Mapping used when a source image does not report a format.
@@ -208,6 +215,7 @@ def materialize(
     convert_rgb: bool,
     convert_format: str | None = None,
     name_fn: Callable[[str, Path], str] | None = None,
+    cluster_ids: Mapping[Path, str] | None = None,
 ) -> tuple[list[dict[str, str]], int]:
     """Write the planned images and return ``(manifest rows, re-encoded count)``."""
     manifest: list[dict[str, str]] = []
@@ -239,24 +247,31 @@ def materialize(
             ):
                 converted += 1
 
-            manifest.append(
-                {
-                    "split": name,
-                    "class": cls,
-                    "source": source,
-                    "md5": info.md5 if info else "",
-                    "mode": info.mode if info else "",
-                    "src_path": str(src_path),
-                    "dst_path": str(dst_path),
-                }
-            )
+            row = {
+                "split": name,
+                "class": cls,
+                "source": source,
+                "md5": info.md5 if info else "",
+                "mode": info.mode if info else "",
+                "src_path": str(src_path),
+                "dst_path": str(dst_path),
+            }
+            if cluster_ids is not None:
+                row[CLUSTER_ID_FIELD] = cluster_ids.get(src_path, "")
+            manifest.append(row)
 
     return manifest, converted
 
 
-def write_manifest(manifest: list[dict[str, str]], output: Path) -> None:
+def write_manifest(
+    manifest: list[dict[str, str]],
+    output: Path,
+    fields: tuple[str, ...] | None = None,
+) -> None:
     with open(output / "manifest.csv", "w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=list(MANIFEST_FIELDS))
+        writer = csv.DictWriter(
+            handle, fieldnames=list(fields or MANIFEST_FIELDS)
+        )
         writer.writeheader()
         writer.writerows(manifest)
 

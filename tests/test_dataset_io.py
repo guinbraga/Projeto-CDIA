@@ -1,5 +1,6 @@
 """Tests for scripts/dataset_io.py."""
 
+import csv
 import hashlib
 import sys
 from pathlib import Path
@@ -115,6 +116,55 @@ def test_manifest_round_trip(tmp_path: Path) -> None:
 
     assert dataset_io.read_manifest(output) == rows
     assert dataset_io.read_manifest(output / "manifest.csv") == rows
+
+
+def test_manifest_round_trip_with_cluster_id(tmp_path: Path) -> None:
+    source = tmp_path / "src" / "A" / "a.jpg"
+    make_jpeg(source)
+
+    output = tmp_path / "out"
+    records = {
+        "train": [("A", "src", source)],
+        "val": [],
+        "test": [],
+    }
+    manifest, _ = dataset_io.materialize(
+        records,
+        output,
+        {},
+        use_link=False,
+        convert_rgb=False,
+        cluster_ids={source: "cluster-1"},
+    )
+    dataset_io.write_manifest(
+        manifest, output, dataset_io.MANIFEST_FIELDS_WITH_CLUSTER
+    )
+
+    with open(output / "manifest.csv", newline="", encoding="utf-8") as handle:
+        header = next(csv.reader(handle))
+    assert header == [
+        "split",
+        "class",
+        "source",
+        "cluster_id",
+        "md5",
+        "mode",
+        "src_path",
+        "dst_path",
+    ]
+
+    rows = dataset_io.read_manifest(output)
+    assert rows[0]["cluster_id"] == "cluster-1"
+
+    old_output = tmp_path / "old_out"
+    old_manifest, _ = dataset_io.materialize(
+        records, old_output, {}, use_link=False, convert_rgb=False
+    )
+    dataset_io.write_manifest(old_manifest, old_output)
+    with open(old_output / "manifest.csv", newline="", encoding="utf-8") as handle:
+        old_header = next(csv.reader(handle))
+    assert old_header == list(dataset_io.MANIFEST_FIELDS)
+    assert "cluster_id" not in dataset_io.read_manifest(old_output)[0]
 
 
 def test_materialize_resolves_collisions(tmp_path: Path) -> None:
