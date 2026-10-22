@@ -11,6 +11,7 @@ stages:
     deps:
       - scripts/content_index.py
       - scripts/dataset_io.py
+      - scripts/analyze_duplicate_images.py
       - scripts/detect_duplicate_images.py
       - data/kaggle_dataset/convertido
       - data/roboflow_convertido/merged

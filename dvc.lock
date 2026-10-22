@@ -62,10 +62,15 @@ stages:
       md5: 8821c401318c37c670a4ef957ce99483.dir
       size: 41262675
       nfiles: 2384
+    - path: scripts/analyze_duplicate_images.py
+      hash: md5
+      md5: 0596be4a27b9c1874ed1ce0bc822494e
+      size: 9146
+      isexec: true
     - path: scripts/content_index.py
       hash: md5
-      md5: d4841376166619c19e26338fe6865dfb
-      size: 15477
+      md5: 97a1b2c10741481562aa8bb68cfa2f3e
+      size: 15234
     - path: scripts/dataset_io.py
       hash: md5
       md5: 16b75ce3abb911505605283426a67c70

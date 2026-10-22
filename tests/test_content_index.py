@@ -178,7 +178,7 @@ def test_unreadable_images_are_reported_and_excluded(tmp_path: Path) -> None:
         "alpha/raw/paper/empty.jpg",
         "beta/raw/paper/corrupt.jpg",
     }
-    assert "empty" in unreadable["alpha/raw/paper/empty.jpg"].reason
+    assert "vazio" in unreadable["alpha/raw/paper/empty.jpg"].reason
     assert unreadable["beta/raw/paper/corrupt.jpg"].reason
     assert index.n_clusters == 1
 
@@ -252,14 +252,62 @@ def test_rows_are_sorted_by_source_class_and_path(tmp_path: Path) -> None:
     assert keys == sorted(keys)
 
 
-def test_index_does_not_depend_on_split_assignment(tmp_path: Path) -> None:
+def test_clusters_require_both_hashes_within_threshold() -> None:
+    def record(md5: str, dhash_hex: str, phash_hex: str) -> ci.ImageRecord:
+        return ci.ImageRecord(
+            source="alpha",
+            cls="paper",
+            path=f"alpha/raw/paper/{md5}.jpg",
+            md5=md5,
+            dhash=dhash_hex,
+            phash=phash_hex,
+        )
+
+    zero = "00" * 8
+    one_bit = "00" * 7 + "01"
+    all_bits = "ff" * 8
+
+    dhash_only = ci.build_index(
+        [record("a", zero, zero), record("b", one_bit, all_bits)],
+        [],
+    )
+    phash_only = ci.build_index(
+        [record("c", zero, zero), record("d", all_bits, one_bit)],
+        [],
+    )
+    both = ci.build_index(
+        [record("e", zero, zero), record("f", one_bit, one_bit)],
+        [],
+    )
+
+    assert dhash_only.n_clusters == 2
+    assert phash_only.n_clusters == 2
+    assert both.n_clusters == 1
+
+
+def test_worker_count_does_not_change_output(tmp_path: Path) -> None:
     write_jpeg(tmp_path, Path("alpha/raw/paper/a.jpg"), smooth_image(1))
-    write_jpeg(tmp_path, Path("beta/raw/paper/b.jpg"), smooth_image(1))
+    write_jpeg(tmp_path, Path("beta/raw/paper/b.jpg"), smooth_image(2))
+    write_jpeg(tmp_path, Path("beta/raw/glass/c.jpg"), smooth_image(1))
+
+    outputs = []
+    for workers in (1, 2):
+        out = tmp_path / f"index_{workers}.csv"
+        report = tmp_path / f"unreadable_{workers}.csv"
+        index = ci.build_content_index(tmp_path, sources=SOURCES, workers=workers)
+        ci.write_content_index(index, out, report)
+        outputs.append((out.read_bytes(), report.read_bytes()))
+
+    assert outputs[0] == outputs[1]
+
+
+def test_cluster_identity_is_content_derived(tmp_path: Path) -> None:
+    write_jpeg(tmp_path, Path("alpha/raw/paper/a.jpg"), smooth_image(1))
+    write_jpeg(tmp_path, Path("beta/raw/glass/b.jpg"), smooth_image(1))
 
     index = ci.build_content_index(tmp_path, sources=SOURCES, workers=1)
 
     assert index.n_clusters == 1
-    assert {row.source for row in index.rows} == {"alpha", "beta"}
     assert {row.cluster_id for row in index.rows} == {
         min(row.md5 for row in index.rows)
     }
@@ -270,12 +318,3 @@ def test_source_roots_must_exist(tmp_path: Path) -> None:
 
     with pytest.raises(ci.ContentIndexError):
         ci.build_content_index(tmp_path, sources=SOURCES, workers=1)
-
-
-def test_default_source_roots_match_the_raw_datasets() -> None:
-    assert ci.SOURCE_ROOTS == {
-        "kaggle_dataset": Path("kaggle_dataset/convertido"),
-        "roboflow_convertido": Path("roboflow_convertido/merged"),
-        "trashbox": Path("trashbox/TrashBox_train_set"),
-        "trashnet": Path("trashnet/dataset-resized"),
-    }

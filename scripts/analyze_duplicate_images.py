@@ -32,6 +32,10 @@ import numpy as np
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 POP = np.unpackbits(np.arange(256, dtype=np.uint8)[:, None], axis=1).sum(1).astype(np.int16)
 
+#: Joint dHash/pHash threshold justified by ``--sweep``. Shared with the
+#: content index so both commands keep using the same definition.
+NJOINT_DEFAULT = 1
+
 
 def hb(h):
     return np.frombuffer(bytes.fromhex(h), dtype=np.uint8) if h else np.zeros(8, np.uint8)
@@ -113,7 +117,7 @@ def main():
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--csv", default=os.path.join(REPO, "reports", "duplicates", "image_hashes.csv"))
     ap.add_argument("--out-dir", default=os.path.join(REPO, "reports", "duplicates"))
-    ap.add_argument("--njoint", type=int, default=1,
+    ap.add_argument("--njoint", type=int, default=NJOINT_DEFAULT,
                     help="max Hamming distance for BOTH dHash and pHash (default 1)")
     ap.add_argument("--sweep", action="store_true",
                     help="also print a joint-threshold sweep to justify --njoint")

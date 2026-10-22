@@ -46,22 +46,19 @@ from pathlib import Path
 from PIL import Image
 
 import dataset_io
-from detect_duplicate_images import dhash, phash
+from analyze_duplicate_images import NJOINT_DEFAULT
+from detect_duplicate_images import DEFAULT_DATASETS, dhash, phash
 
 REPO_ROOT: Path = Path(__file__).resolve().parent.parent
 
-#: Raw source datasets, relative to ``--data-root``. Kept in sync with the
-#: mapping used by the existing duplicate detection pipeline.
+#: Raw source datasets, relative to ``--data-root``.
 SOURCE_ROOTS: dict[str, Path] = {
-    "kaggle_dataset": Path("kaggle_dataset/convertido"),
-    "roboflow_convertido": Path("roboflow_convertido/merged"),
-    "trashbox": Path("trashbox/TrashBox_train_set"),
-    "trashnet": Path("trashnet/dataset-resized"),
+    name: Path(relative) for name, relative in DEFAULT_DATASETS.items()
 }
 
-#: Near-duplicate threshold, matching ``analyze_duplicate_images.py --njoint 1``.
-CLUSTER_DHASH_MAX: int = 1
-CLUSTER_PHASH_MAX: int = 1
+#: Near-duplicate threshold, shared with ``analyze_duplicate_images.py``.
+CLUSTER_DHASH_MAX: int = NJOINT_DEFAULT
+CLUSTER_PHASH_MAX: int = NJOINT_DEFAULT
 
 INDEX_FIELDS: tuple[str, ...] = (
     "cluster_id",
@@ -113,7 +110,6 @@ class Cluster:
     cluster_id: str
     size: int
     classes: tuple[str, ...]
-    sources: tuple[str, ...]
 
     @property
     def ambiguous(self) -> bool:
@@ -177,7 +173,7 @@ def discover_images(
     for source, relative in sorted(mapping.items()):
         base = root / relative
         if not base.is_dir():
-            raise ContentIndexError(f"source directory not found: {base}")
+            raise ContentIndexError(f"diretório de origem não encontrado: {base}")
         for dirpath, dirnames, filenames in os.walk(base):
             dirnames[:] = sorted(
                 name for name in dirnames if not name.startswith(".")
@@ -200,16 +196,16 @@ def _hash_one(
     try:
         payload = path.read_bytes()
     except OSError as exc:
-        return None, UnreadableImage(source, cls, relative, f"unreadable: {exc}")
+        return None, UnreadableImage(source, cls, relative, f"ilegível: {exc}")
     if not payload:
-        return None, UnreadableImage(source, cls, relative, "empty file (0 bytes)")
+        return None, UnreadableImage(source, cls, relative, "arquivo vazio (0 bytes)")
     try:
         with Image.open(BytesIO(payload)) as image:
             rgb = image.convert("RGB")
             dh = dhash(rgb).tobytes().hex()
             ph = phash(rgb).tobytes().hex()
     except Exception as exc:  # noqa: BLE001 - report and exclude
-        return None, UnreadableImage(source, cls, relative, f"undecodable: {exc}")
+        return None, UnreadableImage(source, cls, relative, f"corrompido: {exc}")
     record = ImageRecord(
         source=source,
         cls=cls,
@@ -321,8 +317,7 @@ def build_index(
     for members in components.values():
         cluster_id = min(ordered[index].md5 for index in members)
         classes = tuple(sorted({ordered[index].cls for index in members}))
-        sources = tuple(sorted({ordered[index].source for index in members}))
-        clusters.append(Cluster(cluster_id, len(members), classes, sources))
+        clusters.append(Cluster(cluster_id, len(members), classes))
         cluster_classes[cluster_id] = classes
         for index in members:
             cluster_ids[index] = cluster_id
@@ -470,16 +465,16 @@ def main(argv: list[str] | None = None) -> int:
     write_content_index(index, args.out, args.unreadable_report)
 
     print(
-        f"[content-index] {index.n_images} images, {index.n_clusters} clusters, "
-        f"{index.n_redundant_members} redundant members"
+        f"[content-index] {index.n_images} imagens, {index.n_clusters} clusters, "
+        f"{index.n_redundant_members} membros redundantes"
     )
     print(
-        f"[content-index] {len(index.ambiguous_clusters)} ambiguous clusters "
-        f"({index.n_ambiguous_images} images)"
+        f"[content-index] {len(index.ambiguous_clusters)} clusters ambíguos "
+        f"({index.n_ambiguous_images} imagens)"
     )
-    print(f"[content-index] {len(index.unreadable)} unreadable images excluded")
-    print(f"[content-index] index -> {args.out}")
-    print(f"[content-index] unreadable -> {args.unreadable_report}")
+    print(f"[content-index] {len(index.unreadable)} imagens ilegíveis excluídas")
+    print(f"[content-index] índice -> {args.out}")
+    print(f"[content-index] ilegíveis -> {args.unreadable_report}")
     return 0
 
 
