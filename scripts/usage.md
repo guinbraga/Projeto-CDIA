@@ -68,13 +68,17 @@ cd data
 zip -0 -qr trashbox_split.zip trashbox_split
 zip -0 -qr kaggle_dataset_split.zip kaggle_dataset_split
 zip -0 -qr roboflow_convertido_split.zip roboflow_convertido_split
+zip -0 -qr merged_dataset.zip merged_dataset
 ```
 
-Upload all three to `MyDrive/zips/` (~2.1 G + 3.5 G + 191 M).
+Upload all four to `MyDrive/zips/` (~2.1 G + 3.5 G + 191 M + 2.6 G).
 
-The zips are rebuilt from the registry-derived `data/*_split` directories.
-The committed pipeline (`dvc.yaml` + `params.yaml`), not the zips, is the source
-of truth: rerun `dvc repro` and re-zip after changing a seed or ratio.
+The zips are rebuilt from the registry-derived `data/*_split` and
+`data/merged_dataset` directories. The committed pipeline (`dvc.yaml` +
+`params.yaml`), not the zips, is the source of truth: rerun `dvc repro` and
+re-zip after changing a seed or ratio. Do not run `dvc repro` while zipping or
+training — it deletes and rewrites those directories. Rebuild and run
+`dvc repro verify` first, then zip, then train.
 
 ### Cell 1 — Colab: check the runtime
 
@@ -106,6 +110,7 @@ Mounting matters beyond data access: `resolve_output_dir` sends artifacts to `/c
 !unzip -q -o /content/drive/MyDrive/zips/trashbox_split.zip            -d /content/data
 !unzip -q -o /content/drive/MyDrive/zips/kaggle_dataset_split.zip      -d /content/data
 !unzip -q -o /content/drive/MyDrive/zips/roboflow_convertido_split.zip -d /content/data
+!unzip -q -o /content/drive/MyDrive/zips/merged_dataset.zip            -d /content/data
 !ls -d /content/data/*/train
 ```
 
@@ -114,7 +119,7 @@ Mounting matters beyond data access: `resolve_output_dir` sends artifacts to `/c
 ```python
 !python /content/trash/scripts/train_efficientnet.py \
     --data-dir /content/data/roboflow_convertido_split \
-    --sampler-alpha 0.5 --epochs 2 --warmup-epochs 1 \
+    --sampler-alpha 0.0 --epochs 2 --warmup-epochs 1 \
     --run-name smoke_roboflow --no-test
 ```
 
@@ -125,9 +130,15 @@ This validates the 3-file import, the sampler, the history schema and the checkp
     tests/test_train_sampler.py tests/test_train_criteria.py -q
 ```
 
-### Cells 6/7/8 — the three real runs (one cell each)
+### Cells 6/7/8/9 — the four real runs (one cell each)
 
 ```python
+# merged: 8 classes, 2.3x, per-source balanced -> production path
+!python /content/trash/scripts/train_efficientnet.py \
+    --data-dir /content/data/merged_dataset \
+    --sampler-alpha 0.0 \
+    --run-name merged_a0.00
+
 # kaggle: 15.9x, plastic 50.1% -> strongest correction
 !python /content/trash/scripts/train_efficientnet.py \
     --data-dir /content/data/kaggle_dataset_split \
@@ -149,7 +160,7 @@ This validates the 3-file import, the sampler, the history schema and the checkp
 
 Everything else is the default (`--epochs 30 --warmup-epochs 3 --monitor f1 --patience 5 --amp`). Don't add `--compile` — recompilation overhead on a 30-epoch T4 run buys nothing.
 
-**Use separate cells, not one `&&` chain.** If kaggle OOMs at epoch 20 you want the other two to still run.
+**Use separate cells, not one `&&` chain.** If kaggle OOMs at epoch 20 you want the other three to still run.
 
 If you'd rather skip Cell 4, this also works — but note the distinct target:
 
@@ -160,21 +171,22 @@ If you'd rather skip Cell 4, this also works — but note the distinct target:
     --sampler-alpha 0.75 --run-name kaggle_a0.75
 ```
 
-Only safe because `--extract-to` is unique per dataset. Reusing `/content/data` for all three is the trap from #1.
+Only safe because `--extract-to` is unique per dataset. Reusing `/content/data` for every dataset is the trap from #1.
 
-### Cell 9 — verify each run started on the right data
+### Cell 10 — verify each run started on the right data
 
 The startup audit is your fingerprint. Check the class count and `imbalance_ratio` before leaving it alone:
 
-| dataset | `[data] classes` | `imbalance_ratio` | expected `cardboard` effective share |
+| dataset | `[data] classes` | `imbalance_ratio` | expected effective share (natural → effective) |
 |---|---|---|---|
-| kaggle `a=0.75` | **6** | **15.87** | ~0.12 (from ~0.032) |
-| trashbox `a=0.50` | **9** | **5.88** | ~0.12 (from ~0.133) |
+| merged `a=0.00` | **8** | **2.31** | natural == effective |
+| kaggle `a=0.75` | **6** | **15.87** | `cardboard` ~0.032 → ~0.12 |
+| trashbox `a=0.50` | **9** | **5.88** | `cigarette_butt` ~0.029 → ~0.06; `cardboard` ~0.133 → ~0.12 |
 | roboflow `a=0.00` | **9** | **2.17** | natural == effective |
 
 For kaggle you should see `plastic 0.5014 → ~0.236`. If `imbalance_ratio` reads 5.88 during the kaggle run, you hit trap #1.
 
-### Cell 10 — compare runs afterwards
+### Cell 11 — compare runs afterwards
 
 ```python
 import json, glob, pandas as pd
@@ -195,7 +207,9 @@ And the per-class view — the minority-collapse check, which is the whole point
 
 ```python
 for p in sorted(glob.glob("/content/drive/MyDrive/trash_efficientnet_b0/*/run_config.json")):
-    c = json.load(open(p)); t = c["test_metrics"]
+    c = json.load(open(p)); t = c.get("test_metrics") or {}
+    if not t.get("per_class"):
+        continue
     print(p.split("/")[-2], {k: round(v["recall"], 3) for k, v in t["per_class"].items()})
 ```
 
