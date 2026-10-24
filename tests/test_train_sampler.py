@@ -53,7 +53,7 @@ def test_alpha_zero_keeps_the_historical_shuffled_loader() -> None:
     train_loader, val_loader, test_loader = train.build_loaders(
         dataset, dataset, dataset, 16, 16, 0, 42, False)
 
-    assert train_loader.shuffle is True
+    assert isinstance(train_loader.sampler, torch.utils.data.RandomSampler)
     assert train_loader.drop_last is True
     for eval_loader in (val_loader, test_loader):
         assert isinstance(eval_loader.sampler, torch.utils.data.SequentialSampler)
