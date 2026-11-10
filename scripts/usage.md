@@ -222,3 +222,47 @@ for p in sorted(glob.glob("/content/drive/MyDrive/trash_efficientnet_b0/*/run_co
 One last thing: `run_config.json` stores the *resolved* `train_class_counts`, so even if you reuse a `--run-name` the `HistoryWriter` header check (23 cols for kaggle vs 29 for trashbox) will abort loudly rather than append misaligned columns. That's a good guard — just means unique run names per dataset+α.
 
 ---
+
+## Hyperparameter Optimization with Optuna
+
+The EfficientNetB0 training pipeline supports hyperparameter
+optimization using Optuna.
+
+Install the optional dependency:
+
+    pip install "optuna>=3.6,<5"
+
+Run the optimization:
+
+    python scripts/tune_efficientnet.py \
+        --data-dir data/merged_dataset \
+        --n-trials 20 \
+        --epochs 12 \
+        --warmup-epochs 3
+
+The optimization searches for the best combination of:
+
+- Learning rate
+- Classifier learning rate
+- Weight decay
+- Label smoothing
+- Sampler alpha
+- Batch size
+- Image resolution
+
+Macro F1 on the validation set is used as the optimization objective.
+
+Test evaluation is disabled during optimization.
+
+Results are saved under:
+
+    runs/optuna_efficientnet/
+        study.db
+        best_params.json
+        trials.csv
+        trials/
+
+After optimization, use best_params.json to configure
+the final training with train_efficientnet.py.
+
+---
