@@ -866,7 +866,7 @@ def train_stage(net: nn.Module, raw_model: nn.Module, train_loader: DataLoader,
                 train_ds: datasets.ImageFolder, use_amp: bool, amp_dtype: Optional[torch.dtype],
                 scaler: Optional[Any], history: HistoryWriter, run_dir: Path, state: RunState,
                 stage: str, epochs: int, epoch_scheduler: Optional[Any],
-                batch_scheduler: Optional[Any], patience: int) -> None:
+                batch_scheduler: Optional[Any], patience: int, trial: Optional[Any] = None) -> None:
     """Run one training stage (warmup or fine-tune) for *epochs* epochs."""
     stale = 0
     for i in range(epochs):
@@ -877,6 +877,7 @@ def train_stage(net: nn.Module, raw_model: nn.Module, train_loader: DataLoader,
         val = evaluate(net, raw_model, val_loader, eval_criterion, device, class_names,
                        args.channels_last, use_amp, amp_dtype)
         state.last_val = val
+      
         print(f"[{stage} {i + 1}/{epochs}] train loss={train_loss:.4f} acc={train_acc:.4f} | "
               f"val loss={val['loss']:.4f} acc={val['acc']:.4f} f1={val['macro_f1']:.4f} "
               f"bal_acc={val['balanced_acc']:.4f} top3={val['top3']:.4f} "
@@ -885,6 +886,17 @@ def train_stage(net: nn.Module, raw_model: nn.Module, train_loader: DataLoader,
         if epoch_scheduler is not None:
             epoch_scheduler.step()
         state.epoch += 1
+
+        if trial is not None:
+            trial.report(
+                float(val["macro_f1"]),
+                        step=state.epoch
+            )
+        
+        if trial.should_prune():
+            import optuna
+            raise optuna.TrialPruned()
+
         row: Dict[str, Any] = {
             "stage": stage, "epoch": state.epoch, "lr_head": f"{lrs[0]:.8g}",
             "lr_backbone": f"{lrs[-1] if len(lrs) > 1 else 0.0:.8g}",
@@ -915,7 +927,8 @@ def train_stage(net: nn.Module, raw_model: nn.Module, train_loader: DataLoader,
 # --------------------------------------------------------------------------- #
 # Main
 # --------------------------------------------------------------------------- #
-def main(argv: Optional[List[str]] = None) -> None:
+def main(argv: Optional[List[str]] = None,
+         trial: Optional[Any] = None) -> Optional[float]:
     """Entry point: resolve data, build the model, train, and write artifacts."""
     args = parse_args(argv)
     if args.mount_drive:
@@ -999,7 +1012,7 @@ def main(argv: Optional[List[str]] = None) -> None:
             train_stage(net, raw_model, train_loader, val_loader, train_criterion, eval_criterion,
                         optimizer, device, args, class_names, train_ds, use_amp, amp_dtype,
                         scaler, history, run_dir, state, "warmup", warmup_epochs, scheduler,
-                        None, 0)
+                        None, 0, trial=trial)
 
         if fine_epochs > 0:
             for param in raw_model.parameters():
@@ -1026,7 +1039,7 @@ def main(argv: Optional[List[str]] = None) -> None:
             train_stage(net, raw_model, train_loader, val_loader, train_criterion, eval_criterion,
                         optimizer, device, args, class_names, train_ds, use_amp, amp_dtype,
                         scaler, history, run_dir, state, "finetune", fine_epochs, None,
-                        scheduler, args.patience)
+                        scheduler, args.patience, trial=trial)
         else:
             print("[stage] fine_epochs<=0 -> skipping fine-tune stage.")
     except KeyboardInterrupt:
@@ -1131,6 +1144,7 @@ def main(argv: Optional[List[str]] = None) -> None:
         json.dump(run_config, handle, indent=2, default=str)
     print("=" * 72 + f"\nDone. Artifacts written to: {run_dir}\n" + "=" * 72)
 
+    return float(state.best_metric) if state.best_metric is not None else None
 
 if __name__ == "__main__":
     main()
