@@ -122,6 +122,29 @@ def _read_csv(path: Path) -> tuple[list[str], list[dict[str, str]]]:
         raise ExternalEvalError(f"cannot read {path}: {exc}") from exc
 
 
+def resolve_manifest_path(manifest: Path, cls: str, stored: str) -> str:
+    """Resolve a manifest path so a target built on another machine still checks.
+
+    Manifests written by older versions of ``prepare_external_eval.py`` embed
+    absolute paths from the machine that built them. Such a path is valid
+    provenance but it is not portable: on Colab the target is unzipped under a
+    different root and every row would look missing on disk. Prefer the stored
+    path, then a path relative to the target, then the canonical
+    ``test/<class>/<filename>`` location inside the target.
+    """
+    if not stored:
+        return ""
+    candidate = Path(stored)
+    if not candidate.is_absolute():
+        candidate = manifest.parent / candidate
+    if candidate.is_file():
+        return str(candidate)
+    portable = manifest.parent / "test" / cls / Path(stored).name
+    if portable.is_file():
+        return str(portable)
+    return str(candidate)
+
+
 def load_external(path: Path) -> list[ExternalRow]:
     manifest = path / "manifest.csv" if path.is_dir() else path
     if not manifest.is_file():
@@ -146,6 +169,8 @@ def load_external(path: Path) -> list[ExternalRow]:
                 raise ExternalEvalError(
                     f"{manifest}: empty {column} at line {line}"
                 )
+        cls = (raw.get("class") or "").strip()
+        stored = (raw.get("dst_path") or raw.get("src_path") or "").strip()
         rows.append(
             ExternalRow(
                 dataset=dataset,
@@ -153,8 +178,8 @@ def load_external(path: Path) -> list[ExternalRow]:
                 md5=raw["md5"].strip(),
                 dhash=raw["dhash"].strip(),
                 phash=raw["phash"].strip(),
-                cls=(raw.get("class") or "").strip(),
-                path=(raw.get("dst_path") or raw.get("src_path") or "").strip(),
+                cls=cls,
+                path=resolve_manifest_path(manifest, cls, stored),
             )
         )
     return rows

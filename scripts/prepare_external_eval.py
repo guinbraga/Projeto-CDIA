@@ -522,7 +522,9 @@ def materialize_target(
                 "phash": candidate.phash,
                 "mode": mode,
                 "src_path": str(candidate.path),
-                "dst_path": str(dst_path),
+                # Relative to the target root: manifests travel with the target,
+                # so a machine that unzips it elsewhere can still find the files.
+                "dst_path": dst_path.relative_to(output).as_posix(),
             }
         )
 
