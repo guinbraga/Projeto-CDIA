@@ -103,9 +103,22 @@ run stays local — nothing else changes. To actually log from Colab:
 2. **Install the client** in a cell; do not rely on Colab's preinstalled set:
    `!pip install -q mlflow==3.18.0`.
 3. **Expose the tracking server** on a URL Colab can reach. Running the tunnel
-   from the laptop that already sees the server over the VPN is enough:
-   `cloudflared tunnel --url http://192.168.15.2:5000` (or
-   `ngrok http 192.168.15.2:5000`). Only port 5000 needs exposing: the server
+   from the laptop that already sees the server over the VPN is enough, but it
+   has to present a `Host` header the server accepts:
+
+   ```bash
+   cloudflared tunnel --url http://192.168.15.2:5000 \
+       --http-host-header 192.168.15.2:5000
+   ```
+
+   MLflow 3 checks `Host` against `--allowed-hosts`, whose default covers
+   localhost and the RFC 1918 ranges only. A tunnel hostname
+   (`*.trycloudflare.com`, `*.ngrok-free.app`) is answered with
+   `Invalid Host header - possible DNS rebinding attack`, while `/health` still
+   returns `200` — so the run looks healthy and dies on its first logging
+   call. Rewriting the header to the server's own address avoids a server
+   restart; the alternative is starting the server with
+   `--allowed-hosts "<tunnel-host>"`. Only port 5000 needs exposing: the server
    reports `artifacts_presigned_only=false` and multipart transfers disabled,
    so artifact bytes are proxied through the tracking server and SeaweedFS is
    never contacted by the client.
@@ -121,6 +134,46 @@ A public tunnel is unauthenticated — this server reports an empty
 tunnel up only for the training window, or front it with basic auth or a
 private overlay network. If the tunnel dies mid-run, three failed calls disable
 tracking and training continues.
+
+A starter sequence for a tracked Colab run — assume Cells 1/2 of the Colab
+recipe below already ran, so the GPU runtime is up and Drive is mounted:
+
+```python
+# Cell A — code, client, tracking target
+!git clone -q https://github.com/guinbraga/Projeto-CDIA.git /content/trash
+!pip install -q mlflow==3.18.0
+%env MLFLOW_TRACKING_URI=https://<tunnel-host>
+%env MLFLOW_HTTP_REQUEST_TIMEOUT=60
+```
+
+The client's own default is 10 s; raise it because each 16 MB checkpoint has to
+cross the tunnel's upstream link. `MLFLOW_HTTP_REQUEST_MAX_RETRIES=2` is left
+alone.
+
+```python
+# Cell B — start the run detached from the browser tab
+!cd /content/trash && nohup python scripts/train_efficientnet.py \
+    --data-dir /content/data/merged_dataset \
+    --sampler-alpha 0.0 --run-name merged_a0.00 \
+    --mlflow --mlflow-log-model \
+    > /content/drive/MyDrive/trash_efficientnet_b0/merged_a0.00.log 2>&1 &
+```
+
+```python
+# Cell C — follow it
+!tail -n 20 /content/drive/MyDrive/trash_efficientnet_b0/merged_a0.00.log
+```
+
+Detaching matters when the browser is the fragile part — a phone screen
+locking, a flaky connection: the cell returns immediately and the kernel keeps
+training. Log and run directory live on Drive, so a disconnect costs console
+output, not the run. Keep the tab foregrounded anyway: Colab reclaims a
+runtime that stays disconnected, and the training process dies with it.
+
+A quick tunnel gets a new hostname on every `cloudflared` restart, so the
+`%env` line has to be redone after one; for an unattended multi-hour run use a
+named tunnel (`cloudflared tunnel create` with a domain you control) so the URL
+is stable.
 
 The DVC hash still works in Colab because the zips keep the directory names:
 `/content/data/merged_dataset` matches the lock's `data/merged_dataset` by
@@ -204,7 +257,7 @@ Mounting matters beyond data access: `resolve_output_dir` sends artifacts to `/c
 ### Cell 3 — get the code (all five module files)
 
 ```python
-!git clone -q https://github.com/<you>/trash.git /content/trash
+!git clone -q https://github.com/guinbraga/Projeto-CDIA.git /content/trash
 !ls /content/trash/scripts/{train_efficientnet,imbalance,metrics,tracking,architectures}.py
 ```
 
@@ -228,7 +281,8 @@ Mounting matters beyond data access: `resolve_output_dir` sends artifacts to `/c
     --run-name smoke_roboflow --no-test
 ```
 
-This validates the 3-file import, the sampler, the history schema and the checkpoint write in ~2 minutes. Then the optional but honest check:
+This validates the module imports (including `tracking.py`), the sampler,
+the history schema and the checkpoint write in ~2 minutes. Then the optional but honest check:
 
 ```python
 !cd /content/trash && python -m pytest tests/test_imbalance.py tests/test_metrics.py \
