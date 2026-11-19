@@ -10,14 +10,20 @@ last feature map comes from. They live here so that
 cross-evaluation notebook all rebuild the same model from the same record.
 
 See ``docs/architecture-swap.md`` for why the surface is this small and which
-architectures were rejected (MobileNetV3 breaks the static Grad-CAM contract;
-ResNet has no ``.features`` attribute and would need a feature-extractor hook).
+architectures were rejected (MobileNetV3 breaks the static Grad-CAM contract).
+ResNet has no ``.features`` attribute and its ``layer4`` cannot be applied to
+raw images, so it uses the feature-extractor hook described below.
 
 Design notes
 ------------
 * Only the architectures listed in :data:`ARCHS` are supported. Adding one is
   a registry entry plus, if it is not a ``features``/``classifier`` network,
   the extractor hook described in ``docs/architecture-swap.md`` §4.
+* ``feature_mode`` says how to obtain the last feature map. ``"module"`` calls
+  ``model.<feature_attr>(images)`` directly (EfficientNet, MobileNetV2).
+  ``"hook"`` registers a forward hook on ``model.<feature_attr>`` and runs the
+  full model, which is required for ResNet: ``layer4`` expects 512-channel
+  input, not an image.
 * Checkpoints record ``arch``, ``arch_weights``, ``img_size``,
   ``feature_channels``, ``head_attr`` and ``head_index``. A checkpoint without
   ``arch`` (everything trained before this module existed) is read as
@@ -42,13 +48,18 @@ import torchvision
 from torchvision.models import (
     EfficientNet_B0_Weights,
     MobileNet_V2_Weights,
+    ResNet18_Weights,
     efficientnet_b0,
     mobilenet_v2,
+    resnet18,
 )
 
 #: Architecture used when ``--arch`` is not passed and by loaders reading a
 #: checkpoint that predates the ``arch`` key.
 DEFAULT_ARCH = "efficientnet_b0"
+
+#: Valid values of :attr:`ArchSpec.feature_mode`.
+FEATURE_MODES = ("module", "hook")
 
 
 @dataclass(frozen=True)
@@ -58,7 +69,9 @@ class ArchSpec:
     ``head_attr``/``head_index`` point at the classifier ``Linear`` inside the
     model (``classifier[1]`` for EfficientNet and MobileNet, ``fc`` for a
     ResNet). ``feature_attr`` is the module that produces the last feature map
-    used by Grad-CAM. ``gradcam_linear_head`` is True only when the pooled
+    used by Grad-CAM, and ``feature_mode`` says how to run it: ``"module"``
+    calls it on the images directly, ``"hook"`` captures its output during a
+    full forward pass. ``gradcam_linear_head`` is True only when the pooled
     vector reaches the classifier through a single ``Linear`` with no
     activation in between, which is what makes the exported
     ``classifier_weights`` matrix an exact Grad-CAM weight.
@@ -72,8 +85,16 @@ class ArchSpec:
     head_attr: str
     head_index: Optional[int]
     feature_attr: str = "features"
+    feature_mode: str = "module"
     gradcam_linear_head: bool = True
     default_img_size: int = 224
+
+    def __post_init__(self) -> None:
+        if self.feature_mode not in FEATURE_MODES:
+            raise ValueError(
+                f"{self.name}: feature_mode={self.feature_mode!r} is not one of "
+                f"{FEATURE_MODES}"
+            )
 
     @property
     def weights_name(self) -> Optional[str]:
@@ -83,7 +104,8 @@ class ArchSpec:
 
 #: Supported architectures, in the order shown by ``--arch``. The default is
 #: first. ``IMAGENET1K_V2`` weights are used for MobileNetV2 (better accuracy
-#: than V1 at the same FLOPs); the checkpoint records which enum was used.
+#: than V1 at the same FLOPs); ResNet18 only ships ``IMAGENET1K_V1``. The
+#: checkpoint records which enum was used.
 ARCHS: Dict[str, ArchSpec] = {
     "efficientnet_b0": ArchSpec(
         name="efficientnet_b0",
@@ -104,6 +126,17 @@ ARCHS: Dict[str, ArchSpec] = {
         head_attr="classifier",
         head_index=1,
         feature_attr="features",
+    ),
+    "resnet18": ArchSpec(
+        name="resnet18",
+        factory=resnet18,
+        weights=ResNet18_Weights.IMAGENET1K_V1,
+        in_features=512,
+        feature_channels=512,
+        head_attr="fc",
+        head_index=None,
+        feature_attr="layer4",
+        feature_mode="hook",
     ),
 }
 
@@ -198,16 +231,57 @@ def build_model(
     return model
 
 
+def _hook_features(
+    model: nn.Module, module: nn.Module, images: torch.Tensor
+) -> torch.Tensor:
+    """Return *module*'s output during a full ``model(images)`` forward pass.
+
+    Used for backbones whose last feature block (ResNet's ``layer4``) consumes
+    the previous stage's 512-channel map, not an image. The hook is always
+    removed, including when the forward raises.
+    """
+    captured: Dict[str, torch.Tensor] = {}
+
+    def capture(_module: nn.Module, _inputs: Any, output: torch.Tensor) -> None:
+        captured["features"] = output
+
+    handle = module.register_forward_hook(capture)
+    try:
+        model(images)
+    finally:
+        handle.remove()
+    if "features" not in captured:
+        raise RuntimeError(
+            f"feature hook on {type(module).__name__} did not fire; the module "
+            f"is not on the model's forward path"
+        )
+    return captured["features"]
+
+
 def extract_features(
     model: nn.Module, spec: ArchSpec, images: torch.Tensor
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """Return ``(last feature map, globally pooled features)``.
 
+    ``feature_mode`` decides how the map is produced: a direct call for
+    ``features``-style backbones, or a forward hook for ResNet, whose
+    ``layer4`` cannot be applied to raw images.
+
     Pooling goes through ``F.adaptive_avg_pool2d`` instead of ``model.avgpool``
     because torchvision's ``MobileNetV2`` has no ``avgpool`` attribute — it
-    pools inline in ``forward``. For EfficientNet the two are identical.
+    pools inline in ``forward``. For EfficientNet and ResNet the two are
+    identical.
     """
-    features = getattr(model, spec.feature_attr)(images)
+    module = getattr(model, spec.feature_attr, None)
+    if module is None:
+        raise AttributeError(
+            f"{type(model).__name__} has no attribute {spec.feature_attr!r} "
+            f"(arch={spec.name})"
+        )
+    if spec.feature_mode == "module":
+        features = module(images)
+    else:
+        features = _hook_features(model, module, images)
     return features, F.adaptive_avg_pool2d(features, (1, 1))
 
 

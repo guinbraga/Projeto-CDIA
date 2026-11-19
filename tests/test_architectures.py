@@ -93,32 +93,73 @@ def test_replace_head_rejects_a_width_that_does_not_match_the_registry():
         architectures.replace_head(model, wrong, num_classes=3)
 
 
+def test_unknown_feature_mode_is_rejected():
+    with pytest.raises(ValueError, match="feature_mode"):
+        dataclasses.replace(architectures.get_arch("resnet18"), feature_mode="magic")
+
+
+def test_resnet18_uses_fc_and_a_layer4_hook():
+    spec = architectures.get_arch("resnet18")
+    assert spec.head_attr == "fc"
+    assert spec.head_index is None
+    assert spec.feature_attr == "layer4"
+    assert spec.feature_mode == "hook"
+    assert (spec.in_features, spec.feature_channels) == (512, 512)
+
+
+def test_hook_mode_captures_layer4_and_removes_the_hook():
+    spec, model = build_untrained("resnet18")
+    model.eval()
+    images = torch.randn(1, 3, 64, 64)
+    reference = {}
+    handle = model.layer4.register_forward_hook(
+        lambda _module, _inputs, output: reference.update(features=output)
+    )
+    with torch.inference_mode():
+        model(images)
+    handle.remove()
+
+    with torch.inference_mode():
+        features, pooled = architectures.extract_features(model, spec, images)
+
+    assert not model.layer4._forward_hooks, "the hook must not outlive the call"
+    assert torch.equal(features, reference["features"])
+    assert pooled.shape == (1, spec.feature_channels, 1, 1)
+
+
+EXPECTED_HEAD_KEYS = {
+    "efficientnet_b0": "classifier.1.weight",
+    "mobilenet_v2": "classifier.1.weight",
+    "resnet18": "fc.weight",
+}
+
+
 def test_head_key_for_the_registered_heads_is_stable():
     # The cross-eval notebook and older export code used this literal; the
     # registry must keep producing it.
-    for name in architectures.arch_names():
-        assert architectures.head_state_dict_key(architectures.get_arch(name)) == (
-            "classifier.1.weight"
-        )
+    assert set(architectures.arch_names()) == set(EXPECTED_HEAD_KEYS)
+    for name, key in EXPECTED_HEAD_KEYS.items():
+        assert architectures.head_state_dict_key(architectures.get_arch(name)) == key
 
 
-def test_checkpoint_metadata_round_trips(tmp_path):
-    spec, model = build_untrained("mobilenet_v2")
-    args = argparse.Namespace(arch="mobilenet_v2", img_size=224)
+@pytest.mark.parametrize("name", architectures.arch_names())
+def test_checkpoint_metadata_round_trips(tmp_path, name):
+    spec, model = build_untrained(name)
+    args = argparse.Namespace(arch=name, img_size=spec.default_img_size)
     path = tmp_path / "best.pt"
     train.save_checkpoint(path, model, FakeImageFolder(), 3, "finetune", {}, args)
 
     ckpt = torch.load(path, map_location="cpu", weights_only=True)
-    assert ckpt["arch"] == "mobilenet_v2"
-    assert ckpt["arch_weights"] == "IMAGENET1K_V2"
-    assert ckpt["img_size"] == 224
+    assert ckpt["arch"] == name
+    assert ckpt["arch_weights"] == spec.weights_name
+    assert ckpt["img_size"] == spec.default_img_size
     assert ckpt["feature_channels"] == spec.feature_channels
-    assert ckpt["head_attr"] == "classifier"
-    assert ckpt["head_index"] == 1
+    assert ckpt["head_attr"] == spec.head_attr
+    assert ckpt["head_index"] == spec.head_index
     assert ckpt["classes"] == FakeImageFolder.classes
 
     assert architectures.arch_from_checkpoint(ckpt) is spec
-    assert architectures.checkpoint_img_size(ckpt, spec) == 224
+    assert architectures.checkpoint_img_size(ckpt, spec) == spec.default_img_size
 
 
 def test_checkpoint_without_arch_falls_back_to_efficientnet_b0(capsys):

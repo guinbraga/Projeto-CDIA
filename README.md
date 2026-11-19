@@ -2,8 +2,8 @@
 
 This repository builds a reproducible image-classification dataset from four
 waste-image sources and trains an ImageNet backbone on it — EfficientNet-B0 by
-default, MobileNetV2 as the comparison model, both through the same script.
-The dataset side
+default, with MobileNetV2 and ResNet18 as comparison models, all through the
+same script. The dataset side
 runs as a five-stage DVC pipeline that indexes image content, assigns every
 duplicate cluster to one split, materialises four per-source projections and a
 merged training set, then gates the result on a hard isolation check. The
@@ -200,11 +200,13 @@ Or train on any single source projection:
 python3 scripts/train_efficientnet.py --data-dir data/trashbox_split
 ```
 
-`--arch mobilenet_v2` switches the backbone without touching the training
-algorithm; the per-architecture facts live in `scripts/architectures.py` and
-every checkpoint records the architecture it was trained with, so the ONNX
-export, the parity gate and the cross-eval notebook rebuild it from the record
-rather than assuming B0.
+`--arch mobilenet_v2` (or `--arch resnet18`) switches the backbone without
+touching the training algorithm; the per-architecture facts live in
+`scripts/architectures.py` and every checkpoint records the architecture it was
+trained with, so the ONNX export, the parity gate and the cross-eval notebook
+rebuild it from the record rather than assuming B0. ResNet18 needs a
+feature-extractor hook because its `layer4` consumes an intermediate map, not an
+image; the registry models that as `feature_mode="hook"`.
 
 The imbalance sampler, its `--sampler-alpha` guidance, the per-dataset ratios
 and the `--arch` details are documented in [scripts/usage.md](scripts/usage.md).

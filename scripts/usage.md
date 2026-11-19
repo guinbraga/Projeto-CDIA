@@ -25,7 +25,7 @@ keep all five files together.
 
 ### Switch backbone
 
-Both architectures come from the registry in `scripts/architectures.py`:
+All three architectures come from the registry in `scripts/architectures.py`:
 
 ```bash
 # EfficientNet-B0 (default; reproduces the existing runs)
@@ -33,20 +33,24 @@ python3 scripts/train_efficientnet.py --data-dir data/merged_dataset
 
 # MobileNetV2 — same training code, same 224 px input, same Grad-CAM contract
 python3 scripts/train_efficientnet.py --data-dir data/merged_dataset --arch mobilenet_v2
+
+# ResNet18 — 512x7x7 feature map, head is `fc`, layer4 captured by a forward hook
+python3 scripts/train_efficientnet.py --data-dir data/merged_dataset --arch resnet18
 ```
 
 `--arch` changes only the backbone: the two-stage schedule, the sampler, the
 losses and the artifact set are shared, so the comparison is controlled.
-MobileNetV2 uses `IMAGENET1K_V2` weights. Every checkpoint records `arch`,
-`arch_weights`, `img_size`, `feature_channels` and the head location;
-`export_onnx.py`, `check_onnx_parity.py` and the cross-eval notebook rebuild
-from that record instead of assuming B0. Checkpoints written before the
-registry carry no `arch` and are read as EfficientNet-B0 with a printed
-warning. Run names and the Drive base follow the arch
-(`trash_efficientnet_b0/`, `trash_mobilenet_v2/`), and
-`tune_efficientnet.py --arch mobilenet_v2` writes its own Optuna study
-(`runs/optuna_mobilenet_v2/{study.db,best_params.json}`) so trials from the
-two backbones are never mixed.
+MobileNetV2 uses `IMAGENET1K_V2` weights; ResNet18 uses `IMAGENET1K_V1`. Every
+checkpoint records `arch`, `arch_weights`, `img_size`, `feature_channels` and
+the head location; `export_onnx.py`, `check_onnx_parity.py` and the cross-eval
+notebook rebuild from that record instead of assuming B0. Checkpoints written
+before the registry carry no `arch` and are read as EfficientNet-B0 with a
+printed warning. Run names and the Drive base follow the arch
+(`trash_efficientnet_b0/`, `trash_mobilenet_v2/`, `trash_resnet18/`), and
+`tune_efficientnet.py --arch resnet18` writes its own Optuna study
+(`runs/optuna_resnet18/{study.db,best_params.json}`) so trials from different
+backbones are never mixed. The Optuna search space is still the one tuned for
+B0; re-tune it before trusting ResNet18's learning rates or batch size.
 
 ### Run tracking (MLflow)
 

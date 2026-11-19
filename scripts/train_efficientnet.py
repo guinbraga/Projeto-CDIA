@@ -7,9 +7,9 @@ Standalone PyTorch / torchvision training: it builds ``ImageFolder`` datasets
 from a ``train/val/test`` tree, applies ImageNet-style augmentation, then
 fine-tunes the backbone selected by ``--arch`` in two stages (frozen-head
 warmup, then full fine-tune). The supported backbones — ``efficientnet_b0``
-(default) and ``mobilenet_v2`` — and their per-architecture facts live in
-``architectures.py``; this script never names a factory directly, so a new
-backbone is a registry entry rather than a fork. It writes a complete set of
+(default), ``mobilenet_v2`` and ``resnet18`` — and their per-architecture facts
+live in ``architectures.py``; this script never names a factory directly, so a
+new backbone is a registry entry rather than a fork. It writes a complete set of
 run artifacts: checkpoints
 (``best.pt`` / ``last.pt`` / ``final.pt``), ``history.csv``, ``run_config.json``,
 ``class_mapping.json``, ``confusion_matrix.csv/.png``, ``test_metrics.json`` and

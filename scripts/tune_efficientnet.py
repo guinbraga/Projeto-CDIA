@@ -4,7 +4,7 @@
 
 The search space is the one tuned for EfficientNet-B0. ``--arch`` passes the
 backbone through to ``train_efficientnet.py``; the study name includes the
-architecture so MobileNetV2 trials are not mixed into the B0 study.
+architecture so MobileNetV2 or ResNet18 trials are not mixed into the B0 study.
 """
 
 from __future__ import annotations
