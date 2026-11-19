@@ -175,6 +175,17 @@ A quick tunnel gets a new hostname on every `cloudflared` restart, so the
 named tunnel (`cloudflared tunnel create` with a domain you control) so the URL
 is stable.
 
+The **browser** UI is a separate matter: MLflow rejects state-changing browser
+requests whose `Origin` is not in `--cors-allowed-origins` (default: localhost
+only) with `403 Cross-origin request blocked`. The run list then shows
+`Request error / INTERNAL_ERROR` while the runs are perfectly healthy — the
+Python client sends no `Origin`, so logging is unaffected. From the phone, open
+a run directly (`#/experiments/<id>/runs/<run_id>?workflowType=mlflow`, which
+only issues `GET`s) or restart the server with
+`--cors-allowed-origins "http://192.168.15.2:5000,https://<tunnel-host>"`.
+The experiment page also defaults to the GenAI overview; the runs table lives
+under the **Model training** switch.
+
 The DVC hash still works in Colab because the zips keep the directory names:
 `/content/data/merged_dataset` matches the lock's `data/merged_dataset` by
 basename, and `data.verified` then really compares the zip against the lock —
