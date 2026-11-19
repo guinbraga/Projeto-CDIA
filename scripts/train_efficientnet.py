@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
-"""Train an EfficientNetB0 classifier on a trash image dataset.
+"""Train an ImageNet-backed classifier on a trash image dataset.
 
 What this script does
 ---------------------
 Standalone PyTorch / torchvision training: it builds ``ImageFolder`` datasets
 from a ``train/val/test`` tree, applies ImageNet-style augmentation, then
-fine-tunes ``efficientnet_b0`` in two stages (frozen-head warmup, then full
-fine-tune). It writes a complete set of run artifacts: checkpoints
+fine-tunes the backbone selected by ``--arch`` in two stages (frozen-head
+warmup, then full fine-tune). The supported backbones — ``efficientnet_b0``
+(default) and ``mobilenet_v2`` — and their per-architecture facts live in
+``architectures.py``; this script never names a factory directly, so a new
+backbone is a registry entry rather than a fork. It writes a complete set of
+run artifacts: checkpoints
 (``best.pt`` / ``last.pt`` / ``final.pt``), ``history.csv``, ``run_config.json``,
-``class_mapping.json``, ``confusion_matrix.csv/.png`` and ``test_metrics.json``.
+``class_mapping.json``, ``confusion_matrix.csv/.png``, ``test_metrics.json`` and
+``data_version.json`` (the DVC/git identity of the input).
 
 Expected layout::
 
@@ -41,9 +46,28 @@ validation/test loss is always unweighted cross-entropy carrying
 ``--label-smoothing``, so a future weighted training loss cannot silently
 redefine ``val_loss``, ``--monitor loss`` or ``test_metrics.json``'s ``loss``.
 
-The pure-numpy helpers live in ``imbalance.py`` and ``metrics.py`` next to
-this file (they are unit-tested without torch, so keep all three files
-together when uploading to Colab).
+Run tracking
+------------
+Every run can be mirrored to an MLflow server. ``--mlflow`` forces it on,
+``--no-mlflow`` forces it off, and the default is *auto*: tracking starts when
+the server answers and the run stays local-only otherwise, so a Colab session
+behind a different network never stalls on an unreachable VPN. The server
+default is ``http://192.168.15.2:5000``; override it with
+``--mlflow-tracking-uri`` or ``MLFLOW_TRACKING_URI``.
+
+A tracked run carries the hyperparameters, one metric point per epoch (train
+and validation loss/accuracy, macro F1, balanced accuracy, per-class F1 and
+recall), the test metrics, the run directory's artifacts, and the model with a
+tensor signature. The dataset identity is the DVC version, not a path string:
+the ``.dir`` md5 from ``dvc.lock`` plus the lock's own md5, the live tree's file
+count and byte size compared against the lock, and the git commit that ran.
+``tracking.py`` holds that logic and the fail-soft MLflow facade; it is
+unit-tested without torch, so keep it next to this file for Colab.
+
+The helper modules live in ``imbalance.py``, ``metrics.py``, ``tracking.py``
+and ``architectures.py`` next to this file (keep all five files together when
+uploading to Colab). ``architectures.py`` is the only place that names a
+torchvision factory, so ``--arch`` stays a one-flag switch.
 
 Runs in Google Colab on A100 40/80GB, L4 24GB and G4, and also on T4 and CPU.
 Hard deps are ``torch``, ``torchvision``, ``PIL``, ``numpy``. ``matplotlib``
@@ -112,13 +136,15 @@ import torchvision
 from torch.nn.utils import clip_grad_norm_
 from torch.utils.data import DataLoader, WeightedRandomSampler
 from torchvision import datasets, transforms
-from torchvision.models import EfficientNet_B0_Weights, efficientnet_b0
 
-# Pure-numpy helpers kept next to this file so they are unit-testable without
-# torch (tests/test_imbalance.py, tests/test_metrics.py).
+# Helper modules kept next to this file so they resolve both as a script and
+# from Colab/notebooks. imbalance/metrics/tracking are pure numpy;
+# architectures needs torch and torchvision.
 _SCRIPTS_DIR = str(Path(__file__).resolve().parent)
 if _SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, _SCRIPTS_DIR)
+import architectures  # noqa: E402
+import tracking  # noqa: E402
 from imbalance import (  # noqa: E402
     class_counts,
     effective_class_shares,
@@ -248,6 +274,15 @@ def print_environment(device: torch.device) -> None:
     print("=" * 72)
 
 
+def print_arch(spec: architectures.ArchSpec, img_size: int) -> None:
+    """Print the resolved backbone before any expensive work starts."""
+    print(
+        f"[arch] {spec.name} weights={spec.weights_name} img_size={img_size} "
+        f"head={spec.head_attr}[{spec.head_index}] "
+        f"feature_channels={spec.feature_channels}"
+    )
+
+
 def auto_batch_size(
     device: torch.device, num_train: int, min_steps_per_epoch: int
 ) -> int:
@@ -295,8 +330,14 @@ def alpha_arg(text: str) -> float:
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
-        description="Train EfficientNetB0 on a trash image dataset.",
+        description="Train an ImageNet-backed classifier on a trash image dataset.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument(
+        "--arch",
+        choices=architectures.arch_names(),
+        default=architectures.DEFAULT_ARCH,
+        help="Backbone to fine-tune (see scripts/architectures.py).",
     )
     parser.add_argument("--data-dir", default=None, help="Dataset root.")
     parser.add_argument(
@@ -328,7 +369,12 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         "--eval-batch-size", type=int, default=0, help="Eval batch (0=auto)."
     )
-    parser.add_argument("--img-size", type=int, default=224, help="Input resolution.")
+    parser.add_argument(
+        "--img-size",
+        type=int,
+        default=architectures.ARCHS[architectures.DEFAULT_ARCH].default_img_size,
+        help="Input resolution.",
+    )
     parser.add_argument("--lr", type=float, default=3e-4, help="Backbone fine-tune lr.")
     parser.add_argument(
         "--head-lr", type=float, default=1e-3, help="Classifier head lr."
@@ -386,6 +432,45 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--compile", action="store_true", help="torch.compile with fallback."
+    )
+    parser.add_argument(
+        "--mlflow",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Log the run to MLflow (default: auto, on when the server answers).",
+    )
+    parser.add_argument(
+        "--mlflow-tracking-uri",
+        default=None,
+        help="MLflow tracking URI (default: $MLFLOW_TRACKING_URI or "
+        f"{tracking.DEFAULT_TRACKING_URI}).",
+    )
+    parser.add_argument(
+        "--mlflow-experiment",
+        default=tracking.DEFAULT_EXPERIMENT,
+        help="MLflow experiment name.",
+    )
+    parser.add_argument(
+        "--mlflow-run-name",
+        default=None,
+        help="MLflow run name (default: the run directory name).",
+    )
+    parser.add_argument(
+        "--mlflow-log-model",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Log the trained model with a tensor signature.",
+    )
+    parser.add_argument(
+        "--mlflow-registered-model",
+        default=None,
+        help="Also register the logged model under this name in the registry.",
+    )
+    parser.add_argument(
+        "--mlflow-log-checkpoints",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Upload best.pt and final.pt alongside the summary artifacts.",
     )
     return parser.parse_args(argv)
 
@@ -523,16 +608,105 @@ def resolve_output_dir(args: argparse.Namespace) -> Path:
     if args.output_dir is not None:
         base = Path(args.output_dir)
     elif Path("/content/drive/MyDrive").is_dir():
-        base = Path("/content/drive/MyDrive/trash_efficientnet_b0")
+        # Default arch resolves to the historical trash_efficientnet_b0 dir;
+        # a comparison arch (trash_mobilenet_v2) gets its own tree.
+        base = Path(f"/content/drive/MyDrive/trash_{args.arch}")
     elif Path("/content").is_dir():
         base = Path("/content/runs")
     else:
         base = Path("./runs")
-    name = args.run_name or f"efficientnet_b0_{datetime.now():%Y%m%d-%H%M%S}"
+    name = args.run_name or f"{args.arch}_{datetime.now():%Y%m%d-%H%M%S}"
     run_dir = base / name
     run_dir.mkdir(parents=True, exist_ok=True)
     print(f"[out] Run directory: {run_dir}")
     return run_dir
+
+
+# --------------------------------------------------------------------------- #
+# Tracking
+# --------------------------------------------------------------------------- #
+def resolve_tracking(args: argparse.Namespace) -> Tuple[bool, str]:
+    """Decide whether to track this run and against which URI.
+
+    ``--mlflow`` and ``--no-mlflow`` are explicit overrides. The default probes
+    ``/health`` so a Colab session without the VPN stays local instead of
+    retrying into a dead network at the first epoch.
+    """
+    uri = (
+        args.mlflow_tracking_uri
+        or os.environ.get("MLFLOW_TRACKING_URI")
+        or tracking.DEFAULT_TRACKING_URI
+    )
+    if args.mlflow is False:
+        print("[mlflow] Tracking disabled (--no-mlflow).")
+        return False, uri
+    if args.mlflow is True:
+        return True, uri
+    if tracking.server_reachable(uri):
+        print(f"[mlflow] Tracking at {uri} (auto-detected).")
+        return True, uri
+    print(
+        f"[mlflow] Tracking disabled: no server answered at {uri}. "
+        "Pass --mlflow to force it."
+    )
+    return False, uri
+
+
+def tracking_tags(
+    trial: Optional[Any],
+    data_version: Dict[str, Any],
+    run_dir: Path,
+    arch: Optional[str] = None,
+) -> Dict[str, str]:
+    """Build the tags that identify the code, data and Optuna trial of a run."""
+    tags: Dict[str, str] = {"script": "train_efficientnet.py", "run_dir": run_dir.name}
+    if arch is not None:
+        tags["arch"] = arch
+    git = data_version.get("git") or {}
+    if git.get("commit"):
+        tags["git.commit"] = str(git["commit"])
+    if git.get("branch"):
+        tags["git.branch"] = str(git["branch"])
+    if git.get("dirty") is not None:
+        tags["git.dirty"] = str(bool(git["dirty"])).lower()
+    dvc = data_version.get("dvc") or {}
+    if dvc:
+        tags["dvc.hash"] = str(dvc.get("hash") or "")
+        tags["dvc.lock_md5"] = str(dvc.get("lock_md5") or "")
+        tags["dvc.stage"] = str(dvc.get("stage") or "")
+        tags["dvc.match"] = str(dvc.get("match") or "")
+        verified = dvc.get("verified")
+        tags["dvc.verified"] = "" if verified is None else str(verified).lower()
+    if trial is not None:
+        tags["optuna.trial"] = str(getattr(trial, "number", ""))
+        try:
+            tags["optuna.study"] = str(trial.study.study_name)
+        except Exception:  # noqa: BLE001 - trial metadata is optional
+            pass
+    return tags
+
+
+def tracking_params(
+    args: argparse.Namespace,
+    data_version: Dict[str, Any],
+    resolved: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Build the parameter payload of a run (nested; the tracker flattens it)."""
+    params: Dict[str, Any] = {
+        key: value
+        for key, value in vars(args).items()
+        if not key.startswith("mlflow_")
+    }
+    params["resolved"] = resolved
+    params["data_version"] = data_version
+    versions = {
+        "python": platform.python_version(),
+        "torch": torch.__version__,
+        "torchvision": torchvision.__version__,
+        "numpy": np.__version__,
+    }
+    params["versions"] = versions
+    return params
 
 
 # --------------------------------------------------------------------------- #
@@ -690,14 +864,19 @@ def build_loaders(
 # Model
 # --------------------------------------------------------------------------- #
 def build_model(
-    num_classes: int, device: torch.device, channels_last: bool
+    spec: architectures.ArchSpec,
+    num_classes: int,
+    device: torch.device,
+    channels_last: bool,
 ) -> nn.Module:
-    """Build EfficientNetB0 with a fresh classifier head."""
-    model = efficientnet_b0(weights=EfficientNet_B0_Weights.IMAGENET1K_V1)
-    in_features = model.classifier[1].in_features
-    assert in_features == 1280, f"Expected 1280 head features, got {in_features}"
+    """Build *spec*'s pretrained backbone with a fresh classifier head."""
+    print(
+        f"[model] arch={spec.name} weights={spec.weights_name} "
+        f"feature_channels={spec.feature_channels}"
+    )
+    model = architectures.build_model(spec, num_classes, pretrained=True)
+    in_features = architectures.get_head(model, spec).in_features
     print(f"[model] head in_features={in_features} num_classes={num_classes}")
-    model.classifier[1] = nn.Linear(in_features, num_classes)
     model = model.to(device)
     if channels_last:
         model = model.to(memory_format=torch.channels_last)
@@ -1003,19 +1182,26 @@ def save_checkpoint(
     metrics: Dict[str, Any],
     args: argparse.Namespace,
 ) -> None:
-    """Save a checkpoint dictionary with model weights and metadata."""
-    torch.save(
-        {
-            "model": raw_model.state_dict(),
-            "classes": train_ds.classes,
-            "class_to_idx": train_ds.class_to_idx,
-            "epoch": epoch,
-            "stage": stage,
-            "metrics": metrics,
-            "args": vars(args),
-        },
-        path,
-    )
+    """Save a checkpoint dictionary with weights and architecture metadata.
+
+    The architecture block (``arch``, ``arch_weights``, ``img_size``,
+    ``feature_channels``, head location) is what lets ``export_onnx.py``,
+    ``check_onnx_parity.py`` and the cross-eval notebook rebuild the network
+    instead of assuming EfficientNet-B0.
+    """
+    spec = architectures.get_arch(getattr(args, "arch", architectures.DEFAULT_ARCH))
+    img_size = int(getattr(args, "img_size", spec.default_img_size))
+    payload = {
+        "model": raw_model.state_dict(),
+        "classes": train_ds.classes,
+        "class_to_idx": train_ds.class_to_idx,
+        "epoch": epoch,
+        "stage": stage,
+        "metrics": metrics,
+        "args": vars(args),
+    }
+    payload.update(architectures.checkpoint_metadata(spec, img_size))
+    torch.save(payload, path)
 
 
 def monitored_value(monitor: str, metrics: Dict[str, Any]) -> float:
@@ -1030,6 +1216,39 @@ def is_improvement(monitor: str, value: float, best: Optional[float]) -> bool:
         return True
     _, higher_is_better = MONITORED_METRICS[monitor]
     return value > best if higher_is_better else value < best
+
+
+def epoch_metrics(
+    train_loss: float,
+    train_acc: float,
+    val: Dict[str, Any],
+    lrs: List[float],
+    seconds: float,
+) -> Dict[str, float]:
+    """Build the per-epoch metric payload for MLflow.
+
+    Mirrors the ``history.csv`` row but with real floats (the CSV stores
+    strings) and with ``val_`` prefixes, so epoch curves stay next to the
+    final ``test_`` metrics in the UI. The epoch number is the metric step,
+    supplied by the caller.
+    """
+    metrics = {
+        "train_loss": float(train_loss),
+        "train_acc": float(train_acc),
+        "val_loss": float(val["loss"]),
+        "val_acc": float(val["acc"]),
+        "val_macro_f1": float(val["macro_f1"]),
+        "val_balanced_acc": float(val["balanced_acc"]),
+        "val_top3": float(val["top3"]),
+        "val_worst_class_f1": float(val["worst_class_f1"]),
+        "lr_head": float(lrs[0]),
+        "lr_backbone": float(lrs[-1] if len(lrs) > 1 else 0.0),
+        "epoch_seconds": float(seconds),
+    }
+    for name in val["per_class"]:
+        metrics[f"val_f1_{name}"] = float(val["per_class"][name]["f1"])
+        metrics[f"val_recall_{name}"] = float(val["per_class"][name]["recall"])
+    return metrics
 
 
 def train_stage(
@@ -1056,6 +1275,7 @@ def train_stage(
     batch_scheduler: Optional[Any],
     patience: int,
     trial: Optional[Any] = None,
+    tracker: Optional[tracking.MlflowTracker] = None,
 ) -> None:
     """Run one training stage (warmup or fine-tune) for *epochs* epochs."""
     stale = 0
@@ -1125,6 +1345,11 @@ def train_stage(
             row[f"val_f1_{name}"] = f"{val['per_class'][name]['f1']:.6f}"
             row[f"val_recall_{name}"] = f"{val['per_class'][name]['recall']:.6f}"
         history.append(row)
+        if tracker is not None:
+            tracker.log_metrics(
+                epoch_metrics(train_loss, train_acc, val, lrs, time.time() - start),
+                step=state.epoch,
+            )
         score = monitored_value(args.monitor, val)
         if is_improvement(args.monitor, score, state.best_metric):
             state.best_metric, state.best_epoch = score, state.epoch
@@ -1157,6 +1382,8 @@ def main(
 ) -> Optional[float]:
     """Entry point: resolve data, build the model, train, and write artifacts."""
     args = parse_args(argv)
+    spec = architectures.get_arch(args.arch)
+    print_arch(spec, args.img_size)
     if args.mount_drive:
         mount_drive()
     seed_everything(args.seed)
@@ -1186,6 +1413,22 @@ def main(
             {"classes": train_ds.classes, "class_to_idx": train_ds.class_to_idx},
             handle,
             indent=2,
+        )
+
+    data_version = tracking.dataset_version(repo_root, data_root)
+    with (run_dir / "data_version.json").open("w") as handle:
+        json.dump(data_version, handle, indent=2, default=str)
+    dvc_version = data_version.get("dvc")
+    if dvc_version is not None:
+        print(
+            f"[data] dvc version: {dvc_version['hash']} "
+            f"(stage={dvc_version['stage']} match={dvc_version['match']} "
+            f"verified={dvc_version['verified']})"
+        )
+    else:
+        print(
+            "[data] dvc version: none (dataset is not a dvc.lock output); "
+            "logging the live fingerprint only."
         )
 
     train_counts = class_counts(train_ds.targets, len(class_names))
@@ -1238,7 +1481,39 @@ def main(
         )
     print(f"[data] steps_per_epoch={steps_per_epoch}")
 
-    raw_model = build_model(len(class_names), device, args.channels_last)
+    tracking_enabled, tracking_uri = resolve_tracking(args)
+    tracker = tracking.MlflowTracker(
+        tracking_uri=tracking_uri,
+        experiment=args.mlflow_experiment,
+        run_name=args.mlflow_run_name or run_dir.name,
+        tags=tracking_tags(trial, data_version, run_dir, arch=spec.name),
+        enabled=tracking_enabled,
+    )
+    tracker.start()
+    if tracker.active:
+        tracker.log_params(
+            tracking_params(
+                args,
+                data_version,
+                {
+                    "data_root": str(data_root),
+                    "run_dir": str(run_dir),
+                    "batch_size": batch_size,
+                    "eval_batch_size": eval_batch_size,
+                    "num_workers": num_workers,
+                    "steps_per_epoch": steps_per_epoch,
+                    "num_classes": len(class_names),
+                    "classes": class_names,
+                    "device": str(device),
+                    "imbalance_ratio": float(ratio),
+                    "train_class_counts": dict(zip(class_names, train_counts)),
+                    "empty_train_classes": empty_classes,
+                },
+            )
+        )
+        tracker.log_reproducibility(repo_root)
+
+    raw_model = build_model(spec, len(class_names), device, args.channels_last)
     net = maybe_compile(raw_model, args.compile, device, args.img_size)
     amp_dtype = get_amp_dtype(device)
     use_amp = bool(args.amp) and device.type == "cuda" and amp_dtype is not None
@@ -1259,10 +1534,12 @@ def main(
 
     try:
         if warmup_epochs > 0:
-            for param in raw_model.features.parameters():
+            # Freeze everything but the head through the registry helpers, so a
+            # backbone without a .features attribute (ResNet) also works.
+            for param in architectures.backbone_parameters(raw_model, spec):
                 param.requires_grad = False
             optimizer = torch.optim.AdamW(
-                list(raw_model.classifier.parameters()),
+                architectures.head_parameters(raw_model, spec),
                 lr=args.head_lr,
                 weight_decay=args.weight_decay,
             )
@@ -1294,12 +1571,13 @@ def main(
                 None,
                 0,
                 trial=trial,
+                tracker=tracker,
             )
 
         if fine_epochs > 0:
             for param in raw_model.parameters():
                 param.requires_grad = True
-            head_params = list(raw_model.classifier.parameters())
+            head_params = architectures.head_parameters(raw_model, spec)
             head_ids = {id(p) for p in head_params}
             decay, no_decay = [], []
             for _, param in raw_model.named_parameters():
@@ -1356,14 +1634,21 @@ def main(
                 scheduler,
                 args.patience,
                 trial=trial,
+                tracker=tracker,
             )
         else:
             print("[stage] fine_epochs<=0 -> skipping fine-tune stage.")
     except KeyboardInterrupt:
+        tracker.end("KILLED")
         print(
             "\n[interrupt] Training interrupted. The best checkpoint saved so far is preserved."
         )
         sys.exit(1)
+    except Exception as exc:
+        # Optuna pruning is a normal outcome, not a failure: keep the run's
+        # metrics but mark it killed so the UI does not show it as crashed.
+        tracker.end("KILLED" if type(exc).__name__ == "TrialPruned" else "FAILED")
+        raise
 
     if state.last_val is not None:
         last = state.last_val
@@ -1442,6 +1727,15 @@ def main(
     else:
         print("[test] Skipped (--no-test).")
 
+    if tracker.active and test_summary is not None:
+        tracker.log_metrics(
+            {
+                f"test_{key}": value
+                for key, value in test_summary.items()
+                if tracking.is_number(value)
+            }
+        )
+
     run_config = {
         **vars(args),
         "resolved": {
@@ -1497,6 +1791,7 @@ def main(
             }
         ),
         "test_metrics": test_summary,
+        "data_version": data_version,
         "versions": {
             "python": platform.python_version(),
             "torch": torch.__version__,
@@ -1506,6 +1801,41 @@ def main(
     }
     with (run_dir / "run_config.json").open("w") as handle:
         json.dump(run_config, handle, indent=2, default=str)
+
+    if tracker.active:
+        tracker.log_metrics(
+            {
+                "best_val_score": state.best_metric,
+                "best_epoch": state.best_epoch,
+                "imbalance_ratio": float(ratio),
+            }
+        )
+        tracker.log_tags(
+            {"best_stage": state.best_stage, "monitor": args.monitor}
+        )
+        tracker.log_artifacts(
+            [run_dir / name for name in tracking.SUMMARY_ARTIFACTS],
+            artifact_path="outputs",
+        )
+        if args.mlflow_log_checkpoints:
+            tracker.log_artifacts(
+                [run_dir / name for name in tracking.CHECKPOINT_ARTIFACTS],
+                artifact_path="checkpoints",
+            )
+        if args.mlflow_log_model:
+            # The best weights are loaded and the model is in eval mode by now.
+            raw_model.eval()
+            example = torch.zeros(2, 3, args.img_size, args.img_size, device=device)
+            with torch.inference_mode():
+                logits = raw_model(example)
+            tracker.log_model(
+                raw_model,
+                input_example=example.cpu().numpy(),
+                output_example=logits.cpu().numpy(),
+                registered_model_name=args.mlflow_registered_model,
+            )
+        tracker.end("FINISHED")
+
     print("=" * 72 + f"\nDone. Artifacts written to: {run_dir}\n" + "=" * 72)
 
     return float(state.best_metric) if state.best_metric is not None else None

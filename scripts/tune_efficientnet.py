@@ -1,6 +1,11 @@
 
 #!/usr/bin/env python3
-"""Hyperparameter optimization for EfficientNetB0 using Optuna."""
+"""Hyperparameter optimization for a registry backbone using Optuna.
+
+The search space is the one tuned for EfficientNet-B0. ``--arch`` passes the
+backbone through to ``train_efficientnet.py``; the study name includes the
+architecture so MobileNetV2 trials are not mixed into the B0 study.
+"""
 
 from __future__ import annotations
 
@@ -12,19 +17,28 @@ from pathlib import Path
 import optuna
 import torch
 
+import architectures
 import train_efficientnet as trainer
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Optimize EfficientNetB0 hyperparameters with Optuna."
+        description="Optimize a registry backbone's hyperparameters with Optuna."
     )
 
     parser.add_argument("--data-dir", type=str, default=None)
     parser.add_argument(
+        "--arch",
+        choices=architectures.arch_names(),
+        default=architectures.DEFAULT_ARCH,
+        help="Backbone to tune (passed through to train_efficientnet.py).",
+    )
+    parser.add_argument(
         "--study-dir",
         type=str,
-        default="runs/optuna_efficientnet"
+        default=None,
+        help="Optuna study directory (default: runs/optuna_efficientnet for "
+        "efficientnet_b0, runs/optuna_<arch> otherwise).",
     )
     parser.add_argument("--n-trials", type=int, default=20)
     parser.add_argument("--epochs", type=int, default=12)
@@ -81,6 +95,7 @@ def objective(trial, args, study_dir):
     # 3. Arguments passed to the original training script
 
     train_args = [
+        "--arch", args.arch,
         "--epochs", str(args.epochs),
         "--warmup-epochs", str(args.warmup_epochs),
         "--batch-size", str(params["batch_size"]),
@@ -99,13 +114,18 @@ def objective(trial, args, study_dir):
         "--run-name", run_name,
         "--no-test",
         "--no-save-last",
+        # Trial weights are throwaway: log params, metrics and the run
+        # directory, but keep 16 MB checkpoints and the model out of MLflow.
+        # The winning configuration is retrained as a normal run.
+        "--no-mlflow-log-checkpoints",
+        "--no-mlflow-log-model",
     ]
 
     if args.data_dir:
         train_args.extend(["--data-dir", args.data_dir])
 
     try:
-        # 4. Run the original EfficientNet training pipeline
+        # 4. Run the training pipeline for the selected backbone
 
         best_macro_f1 = trainer.main(
             argv=train_args,
@@ -140,11 +160,18 @@ def objective(trial, args, study_dir):
             torch.cuda.empty_cache()
 
 
+def default_study_dir(arch: str) -> str:
+    """Keep the historical B0 study tree; give every other arch its own."""
+    if arch == architectures.DEFAULT_ARCH:
+        return "runs/optuna_efficientnet"
+    return f"runs/optuna_{arch}"
+
+
 def main():
 
     args = parse_args()
 
-    study_dir = Path(args.study_dir)
+    study_dir = Path(args.study_dir or default_study_dir(args.arch))
     study_dir.mkdir(parents=True, exist_ok=True)
 
     # 5. Persistent study database
@@ -165,7 +192,7 @@ def main():
     )
 
     study = optuna.create_study(
-        study_name="efficientnet_b0_macro_f1",
+        study_name=f"{args.arch}_macro_f1",
         storage=storage,
         direction="maximize",
         sampler=sampler,
@@ -173,7 +200,8 @@ def main():
         load_if_exists=True
     )
 
-    print("\nStarting EfficientNetB0 optimization...")
+    print(f"\nStarting {args.arch} optimization...")
+    print(f"Architecture: {args.arch}")
     print(f"Trials: {args.n_trials}")
     print(f"Epochs per trial: {args.epochs}")
     print(f"Study directory: {study_dir}")

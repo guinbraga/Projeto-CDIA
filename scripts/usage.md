@@ -19,8 +19,113 @@ python3 scripts/train_efficientnet.py --data-dir data/roboflow_convertido_split
 ```
 
 `train_efficientnet.py` imports the pure-numpy helpers in `scripts/imbalance.py`
-and `scripts/metrics.py`. When uploading to Colab, keep all three files
-together.
+and `scripts/metrics.py`, plus `scripts/tracking.py` for MLflow and
+`scripts/architectures.py` for the backbone registry. When uploading to Colab,
+keep all five files together.
+
+### Switch backbone
+
+Both architectures come from the registry in `scripts/architectures.py`:
+
+```bash
+# EfficientNet-B0 (default; reproduces the existing runs)
+python3 scripts/train_efficientnet.py --data-dir data/merged_dataset
+
+# MobileNetV2 — same training code, same 224 px input, same Grad-CAM contract
+python3 scripts/train_efficientnet.py --data-dir data/merged_dataset --arch mobilenet_v2
+```
+
+`--arch` changes only the backbone: the two-stage schedule, the sampler, the
+losses and the artifact set are shared, so the comparison is controlled.
+MobileNetV2 uses `IMAGENET1K_V2` weights. Every checkpoint records `arch`,
+`arch_weights`, `img_size`, `feature_channels` and the head location;
+`export_onnx.py`, `check_onnx_parity.py` and the cross-eval notebook rebuild
+from that record instead of assuming B0. Checkpoints written before the
+registry carry no `arch` and are read as EfficientNet-B0 with a printed
+warning. Run names and the Drive base follow the arch
+(`trash_efficientnet_b0/`, `trash_mobilenet_v2/`), and
+`tune_efficientnet.py --arch mobilenet_v2` writes its own Optuna study
+(`runs/optuna_mobilenet_v2/{study.db,best_params.json}`) so trials from the
+two backbones are never mixed.
+
+### Run tracking (MLflow)
+
+Each training run can be mirrored to the project's MLflow server,
+`http://192.168.15.2:5000`, whose artifact store is SeaweedFS. The default is
+**auto**: tracking starts when the server answers `/health` and is skipped
+otherwise, so a Colab session without the VPN runs exactly as before.
+
+```bash
+# auto (default): track when the server is reachable
+python3 scripts/train_efficientnet.py --data-dir data/merged_dataset
+
+# force / disable / point somewhere else
+python3 scripts/train_efficientnet.py --data-dir data/merged_dataset --mlflow
+python3 scripts/train_efficientnet.py --data-dir data/merged_dataset --no-mlflow
+MLFLOW_TRACKING_URI=http://10.0.0.5:5000 python3 scripts/train_efficientnet.py ...
+```
+
+A run records the hyperparameters (all CLI flags plus the resolved batch size,
+worker count and class list), one metric point per epoch (`train_loss`,
+`val_loss`, `val_macro_f1`, `val_balanced_acc`, per-class `val_f1_*` and
+`val_recall_*`, learning rates), the final `test_*` metrics, the run
+directory's artifacts under `outputs/`, the checkpoints under `checkpoints/`,
+`dvc.lock`/`dvc.yaml`/`params.yaml` under `reproducibility/`, and the model
+itself with a tensor signature.
+
+The dataset identity is the DVC hash, not the path: `data.dvc.hash` is the
+`.dir` md5 from `dvc.lock`, `data.dvc.lock_md5` pins the whole pipeline,
+`data.git.commit` pins the code, and `data.verified` says whether the tree on
+disk still matches the lock's file count and byte size. See
+[docs/adr/0003-run-tracking-with-mlflow.md](../docs/adr/0003-run-tracking-with-mlflow.md)
+for why the lock is the authority.
+
+Checkpoints are 16 MB each; `--no-mlflow-log-checkpoints` and
+`--no-mlflow-log-model` skip them (the Optuna driver already does, since trial
+weights are throwaway). To publish the model in the registry, add
+`--mlflow-registered-model trash-efficientnet-b0`.
+
+Tracking needs the MLflow client (`pip install mlflow`, pinned in
+`requirements.txt` at the server's version); without it the run prints one
+warning and stays local. Tracking is fail-soft: a dead server prints one
+warning and the run continues to completion, with the local run directory
+unchanged.
+
+#### Tracking from Colab
+
+Colab cannot route to `192.168.15.2`, so the default auto mode prints
+`[mlflow] Tracking disabled: no server answered ...` after a 2 s probe and the
+run stays local — nothing else changes. To actually log from Colab:
+
+1. **Push the code.** `train_efficientnet.py` imports `scripts/tracking.py`
+   and `scripts/architectures.py`; a clone from before either file existed
+   fails at import. The Cell 3 check of all five files catches this.
+2. **Install the client** in a cell; do not rely on Colab's preinstalled set:
+   `!pip install -q mlflow==3.18.0`.
+3. **Expose the tracking server** on a URL Colab can reach. Running the tunnel
+   from the laptop that already sees the server over the VPN is enough:
+   `cloudflared tunnel --url http://192.168.15.2:5000` (or
+   `ngrok http 192.168.15.2:5000`). Only port 5000 needs exposing: the server
+   reports `artifacts_presigned_only=false` and multipart transfers disabled,
+   so artifact bytes are proxied through the tracking server and SeaweedFS is
+   never contacted by the client.
+4. **Point the run at it** and force tracking:
+   `%env MLFLOW_TRACKING_URI=https://<tunnel-host>` then add `--mlflow` to the
+   training command. Forcing matters behind a tunnel that redirects `/health`
+   or demands a password; a `401`/`403` already counts as reachable, so basic
+   auth works by also exporting `MLFLOW_TRACKING_USERNAME` and
+   `MLFLOW_TRACKING_PASSWORD`.
+
+A public tunnel is unauthenticated — this server reports an empty
+`tracking_auth`, so anyone holding the URL can write and delete runs. Keep the
+tunnel up only for the training window, or front it with basic auth or a
+private overlay network. If the tunnel dies mid-run, three failed calls disable
+tracking and training continues.
+
+The DVC hash still works in Colab because the zips keep the directory names:
+`/content/data/merged_dataset` matches the lock's `data/merged_dataset` by
+basename, and `data.verified` then really compares the zip against the lock —
+a stale zip shows `false`.
 
 ### Class imbalance (`--sampler-alpha`)
 `--sampler-alpha` resamples only the **training** stream, with intensity in
@@ -94,13 +199,13 @@ from google.colab import drive
 drive.mount('/content/drive')
 ```
 
-Mounting matters beyond data access: `resolve_output_dir` sends artifacts to `/content/drive/MyDrive/trash_efficientnet_b0/` when Drive is mounted, and to `/content/runs` (which dies with the session) when it isn't.
+Mounting matters beyond data access: `resolve_output_dir` sends artifacts to `/content/drive/MyDrive/trash_<arch>/` (`trash_efficientnet_b0/` by default, `trash_mobilenet_v2/` for the comparison model) when Drive is mounted, and to `/content/runs` (which dies with the session) when it isn't.
 
-### Cell 3 — get the code (all three files)
+### Cell 3 — get the code (all five module files)
 
 ```python
 !git clone -q https://github.com/<you>/trash.git /content/trash
-!ls /content/trash/scripts/{train_efficientnet,imbalance,metrics}.py
+!ls /content/trash/scripts/{train_efficientnet,imbalance,metrics,tracking,architectures}.py
 ```
 
 ### Cell 4 — unzip once per session
@@ -217,7 +322,7 @@ for p in sorted(glob.glob("/content/drive/MyDrive/trash_efficientnet_b0/*/run_co
 
 ## Artifacts per run
 
-`/content/drive/MyDrive/trash_efficientnet_b0/<run-name>/` gets `best.pt`, `last.pt`, `final.pt`, `history.csv`, `run_config.json` (with the `imbalance` block: α, per-class counts, natural vs effective shares, `train_loss_comparable_to_val_loss`), `class_mapping.json`, `test_metrics.json`, `confusion_matrix.csv/.png`.
+`/content/drive/MyDrive/trash_<arch>/<run-name>/` gets `best.pt`, `last.pt`, `final.pt`, `history.csv`, `run_config.json` (with the `imbalance` block: α, per-class counts, natural vs effective shares, `train_loss_comparable_to_val_loss`), `class_mapping.json`, `test_metrics.json`, `confusion_matrix.csv/.png`, and `data_version.json` (the DVC hash, lock md5, git commit and live file/byte counts of the input). When MLflow tracking is on, the same files are mirrored to the run plus `best.pt`/`final.pt` under `checkpoints/`.
 
 One last thing: `run_config.json` stores the *resolved* `train_class_counts`, so even if you reuse a `--run-name` the `HistoryWriter` header check (23 cols for kaggle vs 29 for trashbox) will abort loudly rather than append misaligned columns. That's a good guard — just means unique run names per dataset+α.
 
@@ -225,8 +330,9 @@ One last thing: `run_config.json` stores the *resolved* `train_class_counts`, so
 
 ## Hyperparameter Optimization with Optuna
 
-The EfficientNetB0 training pipeline supports hyperparameter
-optimization using Optuna.
+The training pipeline supports hyperparameter optimization using Optuna for
+either registered backbone; `--arch` is passed through to the trainer (the
+search space is the one tuned for EfficientNet-B0).
 
 Install the optional dependency:
 
@@ -254,15 +360,23 @@ Macro F1 on the validation set is used as the optimization objective.
 
 Test evaluation is disabled during optimization.
 
-Results are saved under:
+Each trial is also logged to MLflow (when the tracking server is reachable),
+tagged with its `optuna.trial` number and `optuna.study` name. Trials log
+params, per-epoch metrics and the small run-directory artifacts, but not
+checkpoints or the model: twenty trials would otherwise push roughly 600 MB of
+throwaway weights into the artifact store.
 
-    runs/optuna_efficientnet/
+Results are saved under `runs/optuna_efficientnet/` for EfficientNet-B0 and
+`runs/optuna_<arch>/` for any other backbone:
+
+    runs/optuna_mobilenet_v2/
         study.db
         best_params.json
         trials.csv
         trials/
 
-After optimization, use best_params.json to configure
-the final training with train_efficientnet.py.
+Each architecture has its own study name (`<arch>_macro_f1`), so trials from
+different backbones are never mixed. After optimization, use best_params.json
+to configure the final training with train_efficientnet.py.
 
 ---
