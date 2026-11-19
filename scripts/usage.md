@@ -155,18 +155,30 @@ cross the tunnel's upstream link. `MLFLOW_HTTP_REQUEST_MAX_RETRIES=2` is left
 alone.
 
 ```python
-# Cell B — start the run detached from the browser tab
-!cd /content/trash && nohup python scripts/train_efficientnet.py \
+%%bash
+mkdir -p /content/drive/MyDrive/trash_efficientnet_b0
+cd /content/trash
+setsid nohup python scripts/train_efficientnet.py \
     --data-dir /content/data/merged_dataset \
     --sampler-alpha 0.0 --run-name merged_a0.00 \
     --mlflow --mlflow-log-model \
     > /content/drive/MyDrive/trash_efficientnet_b0/merged_a0.00.log 2>&1 &
+sleep 3; head -5 /content/drive/MyDrive/trash_efficientnet_b0/merged_a0.00.log
 ```
 
 ```python
 # Cell C — follow it
 !tail -n 20 /content/drive/MyDrive/trash_efficientnet_b0/merged_a0.00.log
 ```
+
+`!cd /content/trash && nohup ... &` looks detached and is not: `A && B &`
+backgrounds the whole AND-list as a subshell, and that subshell holds Colab's
+captured stdout pipe open while the trainer runs, so the cell never returns and
+the kernel is blocked — every other cell queues behind it. Redirecting the
+trainer's own output is not enough, the subshell is the pipe holder. A newline
+instead of `&&` backgrounds only the trainer, and `setsid` moves it out of the
+cell's process group, so the Stop button interrupts the shell rather than the
+run. `sleep 3; head` prints the first lines and returns the cell immediately.
 
 Detaching matters when the browser is the fragile part — a phone screen
 locking, a flaky connection: the cell returns immediately and the kernel keeps
@@ -443,13 +455,16 @@ Cell R3 — two-epoch smoke, tracked, without the 135 MB of weights:
 Cell R4 — the real run, detached from the tab:
 
 ```python
-!cd /content/trash && nohup python scripts/train_efficientnet.py \
+%%bash
+cd /content/trash
+setsid nohup python scripts/train_efficientnet.py \
     --arch resnet18 \
     --data-dir /content/data/merged_dataset \
     --sampler-alpha 0.0 --run-name resnet18_merged_a0.00 \
     --mlflow --mlflow-log-model \
     --mlflow-registered-model trash-resnet18 \
     > /content/drive/MyDrive/trash_resnet18/resnet18_merged_a0.00.log 2>&1 &
+sleep 3; head -5 /content/drive/MyDrive/trash_resnet18/resnet18_merged_a0.00.log
 ```
 
 Cell R5 — follow it, then open the run page directly (the run *list* still
