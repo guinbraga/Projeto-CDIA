@@ -436,7 +436,8 @@ Cell R3 — two-epoch smoke, tracked, without the 135 MB of weights:
     --arch resnet18 \
     --data-dir /content/data/roboflow_convertido_split \
     --sampler-alpha 0.0 --epochs 2 --warmup-epochs 1 \
-    --run-name smoke_resnet18 --no-test --no-mlflow-log-checkpoints
+    --run-name smoke_resnet18 --no-test \
+    --no-mlflow-log-checkpoints --no-mlflow-log-model
 ```
 
 Cell R4 — the real run, detached from the tab:
