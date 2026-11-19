@@ -389,6 +389,76 @@ for p in sorted(glob.glob("/content/drive/MyDrive/trash_efficientnet_b0/*/run_co
 
 `history.csv` in each run dir also carries `val_recall_<class>` per epoch, so you can watch `cigarette_butt` / `cardboard` recover mid-run rather than waiting for the test set.
 
+### ResNet18 in Colab, tracked
+
+`--arch resnet18` reuses everything above; only the weights change. Two things
+differ once tracking is on:
+
+- The checkpoints are 45 MB each (11.2 M parameters against B0's 5.3 M), so
+  `best.pt` + `final.pt` + the pickled model push ~135 MB through the tunnel.
+  Raise `MLFLOW_HTTP_REQUEST_TIMEOUT` to 300, or the first upload dies at the
+  client's 10 s default and takes tracking down with it after three failures.
+- `--run-name` should carry the backbone. The MLflow run is named after the run
+  directory, so `resnet18_merged_a0.00` keeps EfficientNet, MobileNet and
+  ResNet apart inside the single `trash-efficientnet` experiment.
+
+Cell R1 — code, client, tracking target (the tunnel runs on the laptop):
+
+```bash
+cloudflared tunnel --url http://192.168.15.2:5000 \
+    --http-host-header 192.168.15.2:5000
+```
+
+```python
+!git clone -q https://github.com/guinbraga/Projeto-CDIA.git /content/trash
+!pip install -q mlflow==3.18.0
+!mkdir -p /content/drive/MyDrive/trash_resnet18
+%env MLFLOW_TRACKING_URI=https://<tunnel-host>
+%env MLFLOW_HTTP_REQUEST_TIMEOUT=300
+```
+
+Cell R2 — prove the tunnel carries API calls before spending a GPU-hour:
+
+```python
+import mlflow
+print(mlflow.get_tracking_uri())
+print([e.name for e in mlflow.search_experiments()])
+```
+
+`/health` returning `200` proves nothing: the Host allowlist rejects the API
+while `/health` stays green, and the client surfaces it as a `MlflowException`.
+If this cell prints `trash-efficientnet`, the tunnel is good.
+
+Cell R3 — two-epoch smoke, tracked, without the 135 MB of weights:
+
+```python
+!python /content/trash/scripts/train_efficientnet.py \
+    --arch resnet18 \
+    --data-dir /content/data/roboflow_convertido_split \
+    --sampler-alpha 0.0 --epochs 2 --warmup-epochs 1 \
+    --run-name smoke_resnet18 --no-test --no-mlflow-log-checkpoints
+```
+
+Cell R4 — the real run, detached from the tab:
+
+```python
+!cd /content/trash && nohup python scripts/train_efficientnet.py \
+    --arch resnet18 \
+    --data-dir /content/data/merged_dataset \
+    --sampler-alpha 0.0 --run-name resnet18_merged_a0.00 \
+    --mlflow --mlflow-log-model \
+    --mlflow-registered-model trash-resnet18 \
+    > /content/drive/MyDrive/trash_resnet18/resnet18_merged_a0.00.log 2>&1 &
+```
+
+Cell R5 — follow it, then open the run page directly (the run *list* still
+needs `MLFLOW_SERVER_CORS_ALLOWED_ORIGINS` on the server; a run URL only issues
+`GET`s and works over the LAN from any origin):
+
+```python
+!tail -n 20 /content/drive/MyDrive/trash_resnet18/resnet18_merged_a0.00.log
+```
+
 ## Artifacts per run
 
 `/content/drive/MyDrive/trash_<arch>/<run-name>/` gets `best.pt`, `last.pt`, `final.pt`, `history.csv`, `run_config.json` (with the `imbalance` block: α, per-class counts, natural vs effective shares, `train_loss_comparable_to_val_loss`), `class_mapping.json`, `test_metrics.json`, `confusion_matrix.csv/.png`, and `data_version.json` (the DVC hash, lock md5, git commit and live file/byte counts of the input). When MLflow tracking is on, the same files are mirrored to the run plus `best.pt`/`final.pt` under `checkpoints/`.
