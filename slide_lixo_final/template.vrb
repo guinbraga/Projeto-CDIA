@@ -1,0 +1,5 @@
+\frametitle{Referências}	
+	
+	\nocite{*}
+	\bibliographystyle{abntex-alf}
+	\bibliography{referencias}	

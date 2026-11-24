@@ -1,0 +1,54 @@
+\section{Evolução do projeto}
+
+
+\begin{frame}
+
+    \frametitle{Evolução do projeto}
+    
+    \begin{itemize}
+    	
+    	\item Definidas na última apresentação:
+		\begin{itemize}
+			\item Reconstruir e ampliar o dataset.	
+			\item Realizar novos treinamentos.	
+			\item Otimizar hiperparâmetros com Optuna.	
+			\item Realizar novas análises com Grad-CAM.
+			\item Avaliar desempenho, generalização e interpretabilidade.			
+		\end{itemize}
+		
+		 \item Extras:
+		\begin{itemize}
+			\item Exportação do modelo e sua implantação em um aplicativo Android.
+		\end{itemize}
+	\end{itemize}
+\end{frame}
+
+\begin{frame}
+	
+	\frametitle{Construção do dataset integrado}
+	
+	Foram integradas quatro bases públicas de imagens de resíduos, que apresentavam diferenças nos rótulos, quantidade de classes, resolução e características das imagens.
+
+	\textbf{Etapas realizadas:}
+	\begin{itemize}
+		\item Harmonização dos rótulos entre as bases.
+		\item Curadoria semântica utilizando CLIP.
+		\item Identificação e remoção de imagens duplicadas.
+		\item Divisão dos dados por grupos de imagens, evitando vazamento entre treino, validação e teste.
+	\end{itemize}
+	
+\end{frame}
+
+\begin{frame}
+	
+	\frametitle{Construção do dataset integrado}
+	
+	Resultado da integração:
+	\begin{itemize}
+		\item 4 bases públicas.
+		\item 35.603 imagens indexadas.
+		\item 3.121 imagens redundantes.
+		\item 15.707 imagens no dataset combinado (fiquei em duvida dessa info).
+	\end{itemize} 
+	
+\end{frame}

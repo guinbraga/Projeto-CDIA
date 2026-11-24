@@ -1,0 +1,107 @@
+\section{Resultados}
+
+
+\begin{frame}{Generalização entre diferentes bases}
+	
+	\small
+	Para avaliar a capacidade de generalização, os modelos
+	foram testados em bases diferentes daquela utilizada
+	durante o treinamento.
+	
+	\vspace{0.3cm}
+	
+	\centering
+	\begin{tabular}{lcccc}
+		\toprule
+		\textbf{Modelo} &
+		\textbf{Próprio} &
+		\textbf{Outras bases} &
+		\textbf{Gap} &
+		\textbf{Cobertura} \\
+		\midrule
+		Combinado & 0,911 & \textbf{0,798} & 0,113 & 0,516 \\
+		Kaggle    & 0,887 & 0,771 & 0,116 & 0,568 \\
+		TrashBox  & 0,939 & 0,743 & 0,196 & 0,640 \\
+		Roboflow  & 0,997 & 0,499 & 0,497 & 0,647 \\
+		\bottomrule
+	\end{tabular}
+	
+	\vspace{0.4cm}
+
+	\footnotesize
+	\textbf{Gap:} diferença entre o desempenho na própria base e a
+	média nas outras bases. 
+	
+	\textbf{Cobertura:} proporção de imagens
+	cujas classes são reconhecidas pelo modelo.
+	
+\end{frame}
+
+\begin{frame}{Avaliação em bases externas}
+	
+	Os três modelos também foram avaliados em duas bases
+	que não participaram de nenhuma etapa do treinamento.
+	
+	\vspace{0.35cm}
+	
+	\centering
+	\begin{tabular}{lccc}
+		\toprule
+		\textbf{Modelo} &
+		\textbf{Garbage12} &
+		\textbf{RealWaste} &
+		\textbf{Média} \\
+		\midrule
+		EfficientNet-B0 & 0,897 & 0,640 & \textbf{0,769} \\
+		MobileNetV2     & 0,901 & 0,564 & 0,732 \\
+		ResNet18        & 0,864 & 0,601 & 0,732 \\
+		\bottomrule
+	\end{tabular}
+	
+	\vspace{0.4cm}
+	
+	\footnotesize
+	Os resultados são calculados considerando apenas as
+	classes que o modelo consegue reconhecer. Por isso,
+	também é importante observar a cobertura.
+	
+\end{frame}
+
+
+
+\begin{frame}{Interpretabilidade com Grad-CAM}
+	A ativação acompanha o objeto (embalagem longa vida e tampa plástica) em vez de se dispersar pelo cenário.
+	 \begin{figure}[!htbp]
+		\centering
+		\caption{Exemplo de classificação certa}
+		\includegraphics[scale=0.3]{imagens/grad-cam-certo}
+		\\\small{\textbf{Fonte:} Elaborada pelo autor com Matplotlib}%
+	\end{figure}
+	
+\end{frame}
+\begin{frame}{Interpretabilidade com Grad-CAM}
+	O Grad-CAM final confirma a melhora, mas também expõe os limites do modelo. 
+	
+	\begin{figure}[!htbp]
+		\centering
+		\caption{Exemplo de classificação errada}
+		\includegraphics[scale=0.3]{imagens/grad-cam-falha}
+		\\\small{\textbf{Fonte:} Elaborada pelo autor com Matplotlib}%
+	\end{figure}
+\end{frame}
+
+
+\begin{frame}{Aplicação Android}
+	\begin{itemize}
+		\item Conversão do modelo para ONNX.
+		\item Integração do modelo à aplicação Android.
+		\item Classificação de imagens diretamente no dispositivo.
+		\item  Exibição do resultado e do mapa Grad-CAM.
+	\end{itemize}
+	
+	\textbf{sugestão da lua: add prints da aplicação}
+	
+\end{frame}
+
+
+
