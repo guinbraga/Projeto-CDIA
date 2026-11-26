@@ -21,59 +21,6 @@
 			
 \end{frame}
 
-\begin{frame}
-	
-	\frametitle{Otimização de hiperparâmetros (Optuna)}
-	Foi utilizada a biblioteca \textbf{Optuna} para buscar configurações mais adequadas para o treinamento do EfficientNet-B0:
-	\begin{itemize}
-		\item 20 tentativas (trials).
-		\item Até 12 épocas por tentativa.
-		\item 3 épocas iniciais de warmup.
-		\item  Utilização de TPE para sugerir configurações.
-		\item MedianPruner para interromper tentativas com resultados inferiores à mediana.
-	\end{itemize}
-	
-\end{frame}
-
-\begin{frame}{Otimização de hiperparâmetros com Optuna}
-	
-	\centering
-	\small
-	\textbf{Comparação entre a configuração padrão e a otimizada}
-	
-	\vspace{0.35cm}
-	
-	\rowcolors{2}{gray!10}{white}
-	\begin{tabular}{lcc}
-		\rowcolor{UELGreen}
-		\color{white}\textbf{Métrica} &
-		\color{white}\textbf{Padrão} &
-		\color{white}\textbf{Otimizado} \\
-		
-		Macro-F1 (teste) &
-		\textcolor{UELGreen}{\textbf{0,9041}} &
-		0,8979 \\
-		
-		Acurácia balanceada &
-		\textcolor{UELGreen}{\textbf{0,9237}} &
-		0,9144 \\
-		
-		Acurácia &
-		\textcolor{UELGreen}{\textbf{0,8958}} &
-		0,8898 \\
-		
-	\end{tabular}
-	
-	\vspace{0.5cm}
-	
-	\begin{block}{Resultado}
-		A configuração otimizada não superou a configuração
-		padrão nas métricas avaliadas. Isso indica que a
-		configuração inicial já apresentava resultados competitivos.
-	\end{block}
-	
-\end{frame}
-
 \begin{frame}{Comparação entre arquiteturas}
 	
 	\centering

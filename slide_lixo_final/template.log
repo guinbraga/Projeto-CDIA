@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2026.7.1)  25 NOV 2026 21:40
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2026.10.6)  25 NOV 2026 22:23
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -748,7 +748,7 @@ Package: inputenc 2021/02/14 v1.3d Input encoding file
 Package: babel 2024/01/07 v24.1 The Babel package
 \babel@savecnt=\count336
 \U@D=\dimen294
-\l@unhyphenated=\language89
+\l@unhyphenated=\language10
 
 (/usr/share/texlive/texmf-dist/tex/generic/babel/txtbabel.def)
 \bbl@readstream=\read3
@@ -758,7 +758,7 @@ LaTeX Info: Redefining \textlatin on input line 3986.
 (/usr/share/texlive/texmf-dist/tex/generic/babel-portuges/brazil.ldf
 Language: portuges 2021/07/09 v1.2t Portuguese support from the babel system
 Package babel Info: Hyphen rules for 'brazil' set to \l@portuguese
-(babel)             (\language58). Reported on input line 111.
+(babel)             (\language9). Reported on input line 111.
 Package babel Info: Making " an active character on input line 143.
 ))
 (/usr/share/texlive/texmf-dist/tex/latex/colortbl/colortbl.sty
@@ -1665,7 +1665,7 @@ Package pdflscape Info: Auto-detected driver: pdftex on input line 81.
 \c@mv@boldtabular=\count409
 Package newfloat Info: Trying Plan B...
  (./template.nav) (./01Capa.tex
-<imagens/capa.png, id=97, 3212.0pt x 1806.75pt>
+<imagens/capa.png, id=99, 3212.0pt x 1806.75pt>
 File: imagens/capa.png Graphic file (type png)
 <use imagens/capa.png>
 Package pdftex.def Info: imagens/capa.png  used on input line 13.
@@ -1675,7 +1675,7 @@ Package pdftex.def Info: imagens/capa.png  used on input line 13.
 {/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}{/usr/share/texlive/texmf-di
 st/fonts/enc/dvips/carlito/crlt_hsqwq5.enc} <./imagens/capa.png>] (./template.t
 oc)
-<imagens/logo.png, id=140, 353.32pt x 126.4725pt>
+<imagens/logo.png, id=143, 353.32pt x 126.4725pt>
 File: imagens/logo.png Graphic file (type png)
 <use imagens/logo.png>
 Package pdftex.def Info: imagens/logo.png  used on input line 20.
@@ -1728,23 +1728,63 @@ Package pdftex.def Info: imagens/logo.png  used on input line 54.
 (pdftex.def)             Requested size: 70.66273pt x 25.29404pt.
  [7
 
-]) (./04Metodologia.tex
+]
+<imagens/grad-antigo.png, id=504, 1205.50375pt x 465.74pt>
+File: imagens/grad-antigo.png Graphic file (type png)
+<use imagens/grad-antigo.png>
+Package pdftex.def Info: imagens/grad-antigo.png  used on input line 66.
+(pdftex.def)             Requested size: 241.09648pt x 93.14635pt.
 File: imagens/logo.png Graphic file (type png)
 <use imagens/logo.png>
-Package pdftex.def Info: imagens/logo.png  used on input line 22.
+Package pdftex.def Info: imagens/logo.png  used on input line 66.
 (pdftex.def)             Requested size: 70.66273pt x 25.29404pt.
  [8
 
-]
+ <./imagens/grad-antigo.png>]
+<imagens/grad-cam-certo.png, id=561, 692.5875pt x 304.13625pt>
+File: imagens/grad-cam-certo.png Graphic file (type png)
+<use imagens/grad-cam-certo.png>
+Package pdftex.def Info: imagens/grad-cam-certo.png  used on input line 76.
+(pdftex.def)             Requested size: 207.77785pt x 91.24158pt.
 File: imagens/logo.png Graphic file (type png)
 <use imagens/logo.png>
-Package pdftex.def Info: imagens/logo.png  used on input line 36.
+Package pdftex.def Info: imagens/logo.png  used on input line 76.
 (pdftex.def)             Requested size: 70.66273pt x 25.29404pt.
  [9
 
+ <./imagens/grad-cam-certo.png>]
+<imagens/grad-cam-falha.png, id=618, 915.42pt x 403.5075pt>
+File: imagens/grad-cam-falha.png Graphic file (type png)
+<use imagens/grad-cam-falha.png>
+Package pdftex.def Info: imagens/grad-cam-falha.png  used on input line 86.
+(pdftex.def)             Requested size: 274.62811pt x 121.05318pt.
+
+Overfull \vbox (9.22722pt too high) detected at line 86
+ []
+
+File: imagens/logo.png Graphic file (type png)
+<use imagens/logo.png>
+Package pdftex.def Info: imagens/logo.png  used on input line 86.
+(pdftex.def)             Requested size: 70.66273pt x 25.29404pt.
+[10
+
+ <./imagens/grad-cam-falha.png>]
+File: imagens/logo.png Graphic file (type png)
+<use imagens/logo.png>
+Package pdftex.def Info: imagens/logo.png  used on input line 99.
+(pdftex.def)             Requested size: 70.66273pt x 25.29404pt.
+ [11
+
+]
+File: imagens/logo.png Graphic file (type png)
+<use imagens/logo.png>
+Package pdftex.def Info: imagens/logo.png  used on input line 114.
+(pdftex.def)             Requested size: 70.66273pt x 25.29404pt.
+ [12
+
 ]
 LaTeX Font Info:    Trying to load font information for OT1+Crlt-OsF on input l
-ine 75.
+ine 153.
 
 (/usr/share/texlive/texmf-dist/tex/latex/carlito/OT1Crlt-OsF.fd
 File: OT1Crlt-OsF.fd 2022/10/05 (autoinst) Font definitions for OT1/Crlt-OsF.
@@ -1753,32 +1793,32 @@ Package microtype Info: Loading generic protrusion settings for font family
 (microtype)             `Crlt-OsF' (encoding: OT1).
 (microtype)             For optimal results, create family-specific settings.
 (microtype)             See the microtype manual for details.
-LaTeX Font Info:    Trying to load font information for OML+lmm on input line 7
-5.
+LaTeX Font Info:    Trying to load font information for OML+lmm on input line 1
+53.
 
 (/usr/share/texmf/tex/latex/lm/omllmm.fd
 File: omllmm.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    Trying to load font information for OMS+lmsy on input line 
-75.
+153.
 
 (/usr/share/texmf/tex/latex/lm/omslmsy.fd
 File: omslmsy.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    Trying to load font information for OMX+lmex on input line 
-75.
+153.
 
 (/usr/share/texmf/tex/latex/lm/omxlmex.fd
 File: omxlmex.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <10> on input line 75.
+(Font)              <10> on input line 153.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <7> on input line 75.
+(Font)              <7> on input line 153.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <5> on input line 75.
-LaTeX Font Info:    Trying to load font information for U+msa on input line 75.
-
+(Font)              <5> on input line 153.
+LaTeX Font Info:    Trying to load font information for U+msa on input line 153
+.
 
 (/usr/share/texlive/texmf-dist/tex/latex/amsfonts/umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
@@ -1786,8 +1826,8 @@ File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 (/usr/share/texlive/texmf-dist/tex/latex/microtype/mt-msa.cfg
 File: mt-msa.cfg 2006/02/04 v1.1 microtype config. file: AMS symbols (a) (RS)
 )
-LaTeX Font Info:    Trying to load font information for U+msb on input line 75.
-
+LaTeX Font Info:    Trying to load font information for U+msb on input line 153
+.
 
 (/usr/share/texlive/texmf-dist/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
@@ -1797,24 +1837,31 @@ File: mt-msb.cfg 2005/06/01 v1.0 microtype config. file: AMS symbols (b) (RS)
 )
 File: imagens/logo.png Graphic file (type png)
 <use imagens/logo.png>
-Package pdftex.def Info: imagens/logo.png  used on input line 75.
+Package pdftex.def Info: imagens/logo.png  used on input line 153.
 (pdftex.def)             Requested size: 70.66273pt x 25.29404pt.
- [10
+ [13
+
+])
+(./04Metodologia.tex
+File: imagens/logo.png Graphic file (type png)
+<use imagens/logo.png>
+Package pdftex.def Info: imagens/logo.png  used on input line 22.
+(pdftex.def)             Requested size: 70.66273pt x 25.29404pt.
+ [14
 
 ]
 File: imagens/logo.png Graphic file (type png)
 <use imagens/logo.png>
-Package pdftex.def Info: imagens/logo.png  used on input line 139.
+Package pdftex.def Info: imagens/logo.png  used on input line 86.
 (pdftex.def)             Requested size: 70.66273pt x 25.29404pt.
- [11
+ [15
 
-])
-(./05Resultados.tex
+]) (./05Resultados.tex
 File: imagens/logo.png Graphic file (type png)
 <use imagens/logo.png>
 Package pdftex.def Info: imagens/logo.png  used on input line 38.
 (pdftex.def)             Requested size: 70.66273pt x 25.29404pt.
- [12
+ [16
 
 ]
 LaTeX Font Info:    External font `lmex10' loaded for size
@@ -1827,59 +1874,25 @@ File: imagens/logo.png Graphic file (type png)
 <use imagens/logo.png>
 Package pdftex.def Info: imagens/logo.png  used on input line 68.
 (pdftex.def)             Requested size: 70.66273pt x 25.29404pt.
- [13
+ [17
 
-]
-<imagens/grad-cam-certo.png, id=816, 692.5875pt x 304.13625pt>
-File: imagens/grad-cam-certo.png Graphic file (type png)
-<use imagens/grad-cam-certo.png>
-Package pdftex.def Info: imagens/grad-cam-certo.png  used on input line 81.
-(pdftex.def)             Requested size: 207.77785pt x 91.24158pt.
-File: imagens/logo.png Graphic file (type png)
-<use imagens/logo.png>
-Package pdftex.def Info: imagens/logo.png  used on input line 81.
-(pdftex.def)             Requested size: 70.66273pt x 25.29404pt.
- [14
-
- <./imagens/grad-cam-certo.png>]
-<imagens/grad-cam-falha.png, id=872, 915.42pt x 403.5075pt>
-File: imagens/grad-cam-falha.png Graphic file (type png)
-<use imagens/grad-cam-falha.png>
-Package pdftex.def Info: imagens/grad-cam-falha.png  used on input line 91.
-(pdftex.def)             Requested size: 274.62811pt x 121.05318pt.
-
-Overfull \vbox (9.22722pt too high) detected at line 91
- []
-
-File: imagens/logo.png Graphic file (type png)
-<use imagens/logo.png>
-Package pdftex.def Info: imagens/logo.png  used on input line 91.
-(pdftex.def)             Requested size: 70.66273pt x 25.29404pt.
-[15
-
- <./imagens/grad-cam-falha.png>]
-File: imagens/logo.png Graphic file (type png)
-<use imagens/logo.png>
-Package pdftex.def Info: imagens/logo.png  used on input line 104.
-(pdftex.def)             Requested size: 70.66273pt x 25.29404pt.
- [16
-
-]) (./06Conclusao.tex
+])
+(./06Conclusao.tex
 File: imagens/logo.png Graphic file (type png)
 <use imagens/logo.png>
 Package pdftex.def Info: imagens/logo.png  used on input line 13.
 (pdftex.def)             Requested size: 70.66273pt x 25.29404pt.
- [17
+ [18
 
 ]
 File: imagens/logo.png Graphic file (type png)
 <use imagens/logo.png>
 Package pdftex.def Info: imagens/logo.png  used on input line 40.
 (pdftex.def)             Requested size: 70.66273pt x 25.29404pt.
- [18
+ [19
 
-])
-(./00Referencias.tex (./template.bbl (./template.brf)
+]) (./00Referencias.tex (./template.bbl
+(./template.brf)
 \tf@brf=\write6
 \openout6 = `template.brf'.
 
@@ -1888,14 +1901,14 @@ File: imagens/logo.png Graphic file (type png)
 <use imagens/logo.png>
 Package pdftex.def Info: imagens/logo.png  used on input line 10.
 (pdftex.def)             Requested size: 70.66273pt x 25.29404pt.
- [19
+ [20
 
  </usr/share/texlive/texmf-dist/tex/latex/beamer/beamericonarticle.pdf>]
 File: imagens/logo.png Graphic file (type png)
 <use imagens/logo.png>
 Package pdftex.def Info: imagens/logo.png  used on input line 10.
 (pdftex.def)             Requested size: 70.66273pt x 25.29404pt.
- [20
+ [21
 
 
 ])
@@ -1919,19 +1932,19 @@ Package rerunfilecheck Info: File `template.brf' has not changed.
 (rerunfilecheck)             Checksum: D41D8CD98F00B204E9800998ECF8427E;0.
  ) 
 Here is how much of TeX's memory you used:
- 42480 strings out of 474222
- 880960 string characters out of 5748734
+ 42500 strings out of 476089
+ 881402 string characters out of 5793232
  1951975 words of memory out of 5000000
- 63466 multiletter control sequences out of 15000+600000
- 790758 words of font info for 215 fonts, out of 8000000 for 9000
- 1141 hyphenation exceptions out of 8191
+ 63241 multiletter control sequences out of 15000+600000
+ 791231 words of font info for 217 fonts, out of 8000000 for 9000
+ 61 hyphenation exceptions out of 8191
  128i,20n,123p,1188b,1029s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/share/texlive/texmf-dist/fonts/type1/google/carlito/Crlt-Bold.pfb></usr
 /share/texlive/texmf-dist/fonts/type1/google/carlito/Crlt-Regular.pfb>
-Output written on template.pdf (20 pages, 997302 bytes).
+Output written on template.pdf (21 pages, 1301710 bytes).
 PDF statistics:
- 1196 PDF objects out of 1200 (max. 8388607)
- 640 compressed objects within 7 object streams
- 55 named destinations out of 1000 (max. 500000)
- 90265 words of extra memory for PDF output out of 106986 (max. 10000000)
+ 1293 PDF objects out of 1440 (max. 8388607)
+ 689 compressed objects within 7 object streams
+ 57 named destinations out of 1000 (max. 500000)
+ 90270 words of extra memory for PDF output out of 106986 (max. 10000000)
 
