@@ -1,0 +1,86 @@
+\section{Metodologia}
+
+\begin{frame}
+	
+	\frametitle{Metodologia experimental}
+	\textbf{Modelos comparados:}
+	\begin{itemize}
+		\item \textbf{EfficientNet-B0}: Modelo principal da comparação, com 5,3 milhões de parâmetros.
+		\item \textbf{MobileNetV2 }: Alternativa mais leve, com 3,5 milhões de parâmetros.
+		\item \textbf{ResNet18}: Arquitetura de referência, com 11,7 milhões de parâmetros.
+	\end{itemize}
+	
+	\textbf{Configuração experimental:}
+	\begin{itemize}
+		\item Transfer learning com pesos pré-treinados na ImageNet.
+		\item Três épocas iniciais de warmup.
+		\item Fine-tuning com early stopping.
+		\item Mesmos conjuntos de treino, validação e teste para a comparação controlada.
+		\item Macro-F1 como métrica principal.
+	\end{itemize}
+			
+\end{frame}
+
+\begin{frame}{Comparação entre arquiteturas}
+	
+	\centering
+	Foram comparadas três arquiteturas utilizando
+	a mesma base de dados e a mesma configuração de treinamento.
+	
+	\vspace{0.5cm}
+	
+	\begin{columns}[T,onlytextwidth]
+		
+		% EfficientNet
+		\column{0.32\textwidth}
+		\begin{block}{EfficientNet-B0}
+			\centering
+			\vspace{0.2cm}
+			{\Huge\color{UELGreen}\textbf{0,901}}
+			
+			\vspace{0.18cm}
+			\textbf{Macro-F1}
+			
+			\vspace{0.2cm}
+			\small Modelo com melhor resultado.
+		\end{block}
+		
+		% MobileNet
+		\column{0.32\textwidth}
+		\begin{block}{MobileNetV2}
+			\centering
+			\vspace{0.2cm}
+			{\Huge\color{UELGreen}\textbf{0,894}}
+			
+			\vspace{0.15cm}
+			\textbf{Macro-F1}
+			
+			\vspace{0.2cm}
+			\small Alternativa mais leve.
+		\end{block}
+		
+		% ResNet
+		\column{0.32\textwidth}
+		\begin{block}{ResNet18}
+			\centering
+			\vspace{0.2cm}
+			{\Huge\color{UELGreen}\textbf{0,875}}
+			
+			\vspace{0.18cm}
+			\textbf{Macro-F1}
+			
+			\vspace{0.2cm}
+			\small Menor resultado entre as três.
+		\end{block}
+		
+	\end{columns}
+	
+	\vspace{0.4cm}
+	
+	
+	\vspace{0.1cm}
+	\centering
+	\footnotesize
+	Métrica calculada no conjunto de teste do dataset combinado.
+	
+\end{frame}

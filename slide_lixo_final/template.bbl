@@ -1,0 +1,52 @@
+\providecommand{\abntreprintinfo}[1]{%
+ \citeonline{#1}}
+\setlength{\labelsep}{0pt}\begin{thebibliography}{}
+\providecommand{\abntrefinfo}[3]{}
+\providecommand{\abntbstabout}[1]{}
+\abntbstabout{v-1.9.7 }
+
+\bibitem[Abubakar et al. 2022]{abubakar2022}
+\abntrefinfo{Abubakar et al.}{ABUBAKAR et al.}{2022}
+{ABUBAKAR, I.~R. et al. Environmental sustainability impacts of solid waste
+  management practices in the global south.
+\textbf{International Journal of Environmental Research and Public Health},
+  v.~19, n.~19, p. 12717, 2022.}
+
+\bibitem[Adharsh et al. 2024]{adharsh2024}
+\abntrefinfo{Adharsh et al.}{ADHARSH et al.}{2024}
+{ADHARSH, C.~S. et al. Deep learning approaches for waste classification. In:
+  \textbf{2024 International Conference on Advancements in Power, Communication
+  and Intelligent Systems (APCI)}. [S.l.: s.n.], 2024. p.~1--7.}
+
+\bibitem[{Arshnoor7389}]{arshnoor7389}
+\abntrefinfo{{Arshnoor7389}}{{Arshnoor7389}}{}
+{{Arshnoor7389}. \textbf{Garbage classification dataset}. Kaggle.}
+
+\bibitem[Babe et al. 2025]{babe2025}
+\abntrefinfo{Babe et al.}{BABE et al.}{2025}
+{BABE, A. et al. Generalization abilities of foundation models in waste
+  classification.
+\textbf{Waste Management}, v.~198, p. 187--197, 2025.}
+
+\bibitem[Fotovvatikhah et al. 2025]{fotovvatikhah2025}
+\abntrefinfo{Fotovvatikhah et al.}{FOTOVVATIKHAH et al.}{2025}
+{FOTOVVATIKHAH et al. A systematic review of ai-based techniques for automated
+  waste classification.
+\textbf{Sensors}, v.~25, n.~10, p.~3181, 2025.}
+
+\bibitem[Kumsetty, Nekkare et al. 2022]{kumsetty2022}
+\abntrefinfo{Kumsetty, Nekkare et al.}{KUMSETTY; NEKKARE et al.}{2022}
+{KUMSETTY, N.; NEKKARE, A. B. et al. Trashbox: Trash detection and
+  classification using quantum transfer learning. In:  \textbf{FRUCT 2022}.
+  [S.l.: s.n.], 2022.}
+
+\bibitem[{Mostafa Abla}]{mostafaabla}
+\abntrefinfo{{Mostafa Abla}}{{Mostafa Abla}}{}
+{{Mostafa Abla}. \textbf{Garbage classification (12 classes)}. Kaggle.}
+
+\bibitem[{Thesis Project SACR3}]{thesisproject2024}
+\abntrefinfo{{Thesis Project SACR3}}{{Thesis Project SACR3}}{}
+{{Thesis Project SACR3}. \textbf{Classification model for waste materials in
+  residential areas}. Roboflow Universe.}
+
+\end{thebibliography}
