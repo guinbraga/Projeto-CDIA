@@ -1,7 +1,7 @@
 This is BibTeX, Version 0.99d (TeX Live 2023/Debian)
 Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
 The top-level auxiliary file: template.aux
-The style file: abntex2-custom/abntex2-alf.bst.bst
+The style file: abntex2-alf.bst
 Reallocated singl_function (elt_size=4) to 100 items from 50.
 Reallocated singl_function (elt_size=4) to 100 items from 50.
 Reallocated singl_function (elt_size=4) to 100 items from 50.
@@ -12,141 +12,58 @@ Reallocated singl_function (elt_size=4) to 100 items from 50.
 Reallocated singl_function (elt_size=4) to 100 items from 50.
 Reallocated wiz_functions (elt_size=4) to 9000 items from 6000.
 Database file #1: abntex2-options.bib
-Repeated entry---line 11 of file abntex2-options.bib
- : @abnt-options{abnt-cite-style=AuthorYEAR
- :                                         ,
-I'm skipping whatever remains of this entry
 Database file #2: referencias.bib
-Reallocated field_info (elt_size=4) to 10037 items from 5000.
 Reallocated singl_function (elt_size=4) to 100 items from 50.
 Reallocated glb_str_ptr (elt_size=4) to 20 items from 10.
 Reallocated global_strs (elt_size=200001) to 20 items from 10.
 Reallocated glb_str_end (elt_size=4) to 20 items from 10.
-128 isn't valid ASCII for entry abnt-full-initials=yes
-while executing---line 2117 of file abntex2-custom/abntex2-alf.bst.bst
-129 isn't valid ASCII for entry abnt-last-names=abnt
-while executing---line 2117 of file abntex2-custom/abntex2-alf.bst.bst
-130 isn't valid ASCII for entry abnt-last-names=bibtex
-while executing---line 2117 of file abntex2-custom/abntex2-alf.bst.bst
-131 isn't valid ASCII for entry abnt-ldots-type=normal
-while executing---line 2117 of file abntex2-custom/abntex2-alf.bst.bst
-132 isn't valid ASCII for entry abnt-ldots-type=none
-while executing---line 2117 of file abntex2-custom/abntex2-alf.bst.bst
-133 isn't valid ASCII for entry abnt-ldots-type=math
-while executing---line 2117 of file abntex2-custom/abntex2-alf.bst.bst
-134 isn't valid ASCII for entry abnt-ldots-type=text
-while executing---line 2117 of file abntex2-custom/abntex2-alf.bst.bst
-135 isn't valid ASCII for entry abnt-missing-year=void
-while executing---line 2117 of file abntex2-custom/abntex2-alf.bst.bst
-136 isn't valid ASCII for entry abnt-missing-year=sd
-while executing---line 2117 of file abntex2-custom/abntex2-alf.bst.bst
-137 isn't valid ASCII for entry abnt-nbr6023=2002
-while executing---line 2117 of file abntex2-custom/abntex2-alf.bst.bst
-138 isn't valid ASCII for entry abnt-nbr6023=2000
-while executing---line 2117 of file abntex2-custom/abntex2-alf.bst.bst
-139 isn't valid ASCII for entry abnt-nbr10520=2002
-while executing---line 2117 of file abntex2-custom/abntex2-alf.bst.bst
-140 isn't valid ASCII for entry abnt-nbr10520=2001
-while executing---line 2117 of file abntex2-custom/abntex2-alf.bst.bst
-141 isn't valid ASCII for entry abnt-nbr10520=1988
-while executing---line 2117 of file abntex2-custom/abntex2-alf.bst.bst
-142 isn't valid ASCII for entry abnt-no-etal-label=yes
-while executing---line 2117 of file abntex2-custom/abntex2-alf.bst.bst
-143 isn't valid ASCII for entry abnt-no-etal-label=no
-while executing---line 2117 of file abntex2-custom/abntex2-alf.bst.bst
-144 isn't valid ASCII for entry abnt-refinfo=yes
-while executing---line 2117 of file abntex2-custom/abntex2-alf.bst.bst
-145 isn't valid ASCII for entry abnt-refinfo=no
-while executing---line 2117 of file abntex2-custom/abntex2-alf.bst.bst
-146 isn't valid ASCII for entry abnt-repeated-author-omit=no
-while executing---line 2117 of file abntex2-custom/abntex2-alf.bst.bst
-147 isn't valid ASCII for entry abnt-repeated-author-omit=yes
-while executing---line 2117 of file abntex2-custom/abntex2-alf.bst.bst
-148 isn't valid ASCII for entry abnt-repeated-title-omit=no
-while executing---line 2117 of file abntex2-custom/abntex2-alf.bst.bst
-149 isn't valid ASCII for entry abnt-repeated-title-omit=yes
-while executing---line 2117 of file abntex2-custom/abntex2-alf.bst.bst
-150 isn't valid ASCII for entry abnt-show-options=no
-while executing---line 2117 of file abntex2-custom/abntex2-alf.bst.bst
-151 isn't valid ASCII for entry abnt-show-options=warn
-while executing---line 2117 of file abntex2-custom/abntex2-alf.bst.bst
-152 isn't valid ASCII for entry abnt-show-options=list
-while executing---line 2117 of file abntex2-custom/abntex2-alf.bst.bst
-153 isn't valid ASCII for entry abnt-substyle=none
-while executing---line 2117 of file abntex2-custom/abntex2-alf.bst.bst
-154 isn't valid ASCII for entry abnt-substyle=UFLA
-while executing---line 2117 of file abntex2-custom/abntex2-alf.bst.bst
-155 isn't valid ASCII for entry abnt-substyle=COPPE
-while executing---line 2117 of file abntex2-custom/abntex2-alf.bst.bst
-156 isn't valid ASCII for entry abnt-thesis-year=final
-while executing---line 2117 of file abntex2-custom/abntex2-alf.bst.bst
-157 isn't valid ASCII for entry abnt-thesis-year=title
-while executing---line 2117 of file abntex2-custom/abntex2-alf.bst.bst
-158 isn't valid ASCII for entry abnt-thesis-year=both
-while executing---line 2117 of file abntex2-custom/abntex2-alf.bst.bst
-159 isn't valid ASCII for entry abnt-title-command=no
-while executing---line 2117 of file abntex2-custom/abntex2-alf.bst.bst
-160 isn't valid ASCII for entry abnt-title-command=yes
-while executing---line 2117 of file abntex2-custom/abntex2-alf.bst.bst
-161 isn't valid ASCII for entry abnt-url-package=none
-while executing---line 2117 of file abntex2-custom/abntex2-alf.bst.bst
-162 isn't valid ASCII for entry abnt-url-package=hyperref
-while executing---line 2117 of file abntex2-custom/abntex2-alf.bst.bst
-163 isn't valid ASCII for entry abnt-verbatim-entry=no
-while executing---line 2117 of file abntex2-custom/abntex2-alf.bst.bst
-164 isn't valid ASCII for entry iso-690-1987
-while executing---line 2117 of file abntex2-custom/abntex2-alf.bst.bst
-Warning--opção abnt-show-options passou para warn
-You can't pop an empty literal stack for entry iso-690-1987
-while executing---line 2146 of file abntex2-custom/abntex2-alf.bst.bst
-ptr=1, stack=
-Op\c c\~ao selecionada {\tt iso-date-place=}\verb+ISO+
----the literal stack isn't empty for entry iso-690-1987
-while executing---line 2146 of file abntex2-custom/abntex2-alf.bst.bst
+Warning--campo year vazio ou faltando em arshnoor7389
+Warning--campo year vazio ou faltando em mostafaabla
+Warning--campo year vazio ou faltando em thesisproject2024
 +---------------------------------------------------------+
-| Estilo bibliográfico abntex2-alf.bst versão v<VERSION>           |
+| Estilo bibliográfico abntex2-alf.bst versão v-1.9.7           |
 | Em caso de dúvidas ou problemas com este estilo procure |
 | http://www.abntex.net.br/                               |
 +---------------------------------------------------------+
-You've used 76 entries,
+You've used 10 entries,
             6714 wiz_defined-function locations,
-            1312 strings with 11863 characters,
-and the built_in function-call counts, 29407 in all, are:
-= -- 1703
-> -- 296
-< -- 36
-+ -- 212
-- -- 99
-* -- 1304
-:= -- 2619
-add.period$ -- 61
-call.type$ -- 105
-change.case$ -- 280
-chr.to.int$ -- 114
-cite$ -- 45
-duplicate$ -- 1319
-empty$ -- 3958
-format.name$ -- 276
-if$ -- 8165
-int.to.chr$ -- 67
-int.to.str$ -- 24
-missing$ -- 1490
-newline$ -- 117
+            1241 strings with 10471 characters,
+and the built_in function-call counts, 7243 in all, are:
+= -- 627
+> -- 245
+< -- 12
++ -- 138
+- -- 74
+* -- 486
+:= -- 1012
+add.period$ -- 27
+call.type$ -- 10
+change.case$ -- 92
+chr.to.int$ -- 18
+cite$ -- 11
+duplicate$ -- 307
+empty$ -- 540
+format.name$ -- 355
+if$ -- 1747
+int.to.chr$ -- 1
+int.to.str$ -- 0
+missing$ -- 158
+newline$ -- 43
 num.names$ -- 40
-pop$ -- 1714
+pop$ -- 209
 preamble$ -- 1
-purify$ -- 236
+purify$ -- 38
 quote$ -- 0
-skip$ -- 3930
+skip$ -- 477
 stack$ -- 1
-substring$ -- 539
-swap$ -- 249
-text.length$ -- 29
+substring$ -- 230
+swap$ -- 147
+text.length$ -- 9
 text.prefix$ -- 0
 top$ -- 0
-type$ -- 21
-warning$ -- 1
-while$ -- 53
+type$ -- 2
+warning$ -- 3
+while$ -- 55
 width$ -- 0
-write$ -- 303
-(There were 40 error messages)
+write$ -- 128
+(There were 3 warnings)

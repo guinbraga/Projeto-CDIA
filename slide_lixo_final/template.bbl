@@ -3,159 +3,50 @@
 \setlength{\labelsep}{0pt}\begin{thebibliography}{}
 \providecommand{\abntrefinfo}[3]{}
 \providecommand{\abntbstabout}[1]{}
-\providecommand{\bibtextitlecommand}[2]{#2}
-\abntbstabout{v<VERSION> }
+\abntbstabout{v-1.9.7 }
 
-\bibitem[]{abnt-show-options=list}
-{Mudan\c ca de estilo ap\'os este ponto com o comando
-  \verb!\citeoption{abnt-show-options=list}! . Op\c c\~ao selecionada {\tt
-  abnt-show-options=}\verb+list+.}
-{\footnotesize\begin{verbatim}
-@abnt-options{abnt-show-options=list,
-key={aaaa},
-abnt-show-options={list}}
-\end{verbatim}}
-\bibitem[]{abnt-substyle=none}
-{Mudan\c ca de estilo ap\'os este ponto com o comando
-  \verb!\citeoption{abnt-substyle=none}! .}
-{\footnotesize\begin{verbatim}
-@abnt-options{abnt-substyle=none,
-key={aaaa}}
-\end{verbatim}}
-\bibitem[]{abnt-substyle=UFLA}
-{Mudan\c ca de estilo ap\'os este ponto com o comando
-  \verb!\citeoption{abnt-substyle=UFLA}! . Op\c c\~ao selecionada {\tt
-  abnt-and-type=}\verb+&+. Op\c c\~ao selecionada {\tt
-  abnt-etal-cite=}\verb+2+. Op\c c\~ao selecionada {\tt
-  abnt-etal-list=}\verb+0+.}
-{\footnotesize\begin{verbatim}
-@abnt-options{abnt-substyle=UFLA,
-key={aaaa}}
-\end{verbatim}}
-\bibitem[]{abnt-substyle=COPPE}
-{Mudan\c ca de estilo ap\'os este ponto com o comando
-  \verb!\citeoption{abnt-substyle=COPPE}! . Op\c c\~ao selecionada {\tt
-  abnt-title-command=}\verb+yes+.}
-{\footnotesize\begin{verbatim}
-@abnt-options{abnt-substyle=COPPE,
-key={aaaa},
-abnt-title-command={yes}}
-\end{verbatim}}
-\bibitem[]{abnt-thesis-year=final}
-{Mudan\c ca de estilo ap\'os este ponto com o comando
-  \verb!\citeoption{abnt-thesis-year=final}! . Op\c c\~ao selecionada {\tt
-  abnt-thesis-year=}\verb+final+.}
-{\footnotesize\begin{verbatim}
-@abnt-options{abnt-thesis-year=final,
-key={aaaa},
-abnt-thesis-year={final}}
-\end{verbatim}}
-\bibitem[]{abnt-thesis-year=title}
-{Mudan\c ca de estilo ap\'os este ponto com o comando
-  \verb!\citeoption{abnt-thesis-year=title}! . Op\c c\~ao selecionada {\tt
-  abnt-thesis-year=}\verb+title+.}
-{\footnotesize\begin{verbatim}
-@abnt-options{abnt-thesis-year=title,
-key={aaaa},
-abnt-thesis-year={title}}
-\end{verbatim}}
-\bibitem[]{abnt-thesis-year=both}
-{Mudan\c ca de estilo ap\'os este ponto com o comando
-  \verb!\citeoption{abnt-thesis-year=both}! . Op\c c\~ao selecionada {\tt
-  abnt-thesis-year=}\verb+both+.}
-{\footnotesize\begin{verbatim}
-@abnt-options{abnt-thesis-year=both,
-key={aaaa},
-abnt-thesis-year={both}}
-\end{verbatim}}
-\bibitem[]{abnt-title-command=no}
-{Mudan\c ca de estilo ap\'os este ponto com o comando
-  \verb!\citeoption{abnt-title-command=no}! . Op\c c\~ao selecionada {\tt
-  abnt-title-command=}\verb+no+.}
-{\footnotesize\begin{verbatim}
-@abnt-options{abnt-title-command=no,
-key={aaaa},
-abnt-title-command={no}}
-\end{verbatim}}
-\bibitem[]{abnt-title-command=yes}
-{Mudan\c ca de estilo ap\'os este ponto com o comando
-  \verb!\citeoption{abnt-title-command=yes}! . Op\c c\~ao selecionada {\tt
-  abnt-title-command=}\verb+yes+.}
-{\footnotesize\begin{verbatim}
-@abnt-options{abnt-title-command=yes,
-key={aaaa},
-abnt-title-command={yes}}
-\end{verbatim}}
-\bibitem[]{abnt-url-package=none}
-{Mudan\c ca de estilo ap\'os este ponto com o comando
-  \verb!\citeoption{abnt-url-package=none}! . Op\c c\~ao selecionada {\tt
-  abnt-url-package=}\verb+none+.}
-{\footnotesize\begin{verbatim}
-@abnt-options{abnt-url-package=none,
-key={aaaa},
-abnt-url-package={none}}
-\end{verbatim}}
-\bibitem[]{abnt-url-package=hyperref}
-{Mudan\c ca de estilo ap\'os este ponto com o comando
-  \verb!\citeoption{abnt-url-package=hyperref}! . Op\c c\~ao selecionada {\tt
-  abnt-url-package=}\verb+hyperref+.}
-{\footnotesize\begin{verbatim}
-@abnt-options{abnt-url-package=hyperref,
-key={aaaa},
-abnt-url-package={hyperref}}
-\end{verbatim}}
-\bibitem[]{abnt-verbatim-entry=no}
-{Mudan\c ca de estilo ap\'os este ponto com o comando
-  \verb!\citeoption{abnt-verbatim-entry=no}! . Op\c c\~ao selecionada {\tt
-  abnt-verbatim-entry=}\verb+no+.}
+\bibitem[Abubakar et al. 2022]{abubakar2022}
+\abntrefinfo{Abubakar et al.}{ABUBAKAR et al.}{2022}
+{ABUBAKAR, I.~R. et al. Environmental sustainability impacts of solid waste
+  management practices in the global south.
+\textbf{International Journal of Environmental Research and Public Health},
+  v.~19, n.~19, p. 12717, 2022.}
 
-\bibitem[]{iso-690-1987}
-{Mudan\c ca de estilo ap\'os este ponto com o comando
-  \verb!\citeoption{iso-690-1987}! . Op\c c\~ao selecionada {\tt
-  abnt-cite-style=}\verb+(Author, YEAR)+.}
- Op\c c\~ao selecionada {\tt iso-abbreviation=}\verb+standard+. Op\c c\~ao
-  selecionada {\tt iso-author-punctuation=}\verb+void+.
-\bibitem[Abubakar 2022]{abubakar2022}
-{ABUBAKAR, I.~R. 2022. \bibtextitlecommand{article}{Environmental
-  sustainability impacts of solid waste management practices in the global
-  south}.
-\emph{International Journal of Environmental Research and Public Health}, 2022,
-  vol.~19, no.~19, p. 12717.}
-
-\bibitem[Adharsh 2024]{adharsh2024}
-{ADHARSH, C.~S. 2024. \bibtextitlecommand{inproceedings}{Deep learning
-  approaches for waste classification}. In \emph{2024 International Conference
-  on Advancements in Power, Communication and Intelligent Systems (APCI)}.
-  [S.l.: s.n.], p.~1--7.}
+\bibitem[Adharsh et al. 2024]{adharsh2024}
+\abntrefinfo{Adharsh et al.}{ADHARSH et al.}{2024}
+{ADHARSH, C.~S. et al. Deep learning approaches for waste classification. In:
+  \textbf{2024 International Conference on Advancements in Power, Communication
+  and Intelligent Systems (APCI)}. [S.l.: s.n.], 2024. p.~1--7.}
 
 \bibitem[{Arshnoor7389}]{arshnoor7389}
-{{Arshnoor7389}. \bibtextitlecommand{misc}{\emph{Garbage classification
-  dataset}}. Kaggle.}
+\abntrefinfo{{Arshnoor7389}}{{Arshnoor7389}}{}
+{{Arshnoor7389}. \textbf{Garbage classification dataset}. Kaggle.}
 
-\bibitem[Babe 2025]{babe2025}
-{BABE, A.; CUINGNET, R.; SCUTURICI, M.; MIGUET, S. 2025.
-  \bibtextitlecommand{article}{Generalization abilities of foundation models in
-  waste classification}.
-\emph{Waste Management}, 2025, vol.~198, p. 187--197.}
+\bibitem[Babe et al. 2025]{babe2025}
+\abntrefinfo{Babe et al.}{BABE et al.}{2025}
+{BABE, A. et al. Generalization abilities of foundation models in waste
+  classification.
+\textbf{Waste Management}, v.~198, p. 187--197, 2025.}
 
-\bibitem[Fotovvatikhah 2025]{fotovvatikhah2025}
-{FOTOVVATIKHAH; AHMEDY, I.; NOOR, R.~M.; MUNIR, M.~U. 2025.
-  \bibtextitlecommand{article}{A systematic review of ai-based techniques for
-  automated waste classification}.
-\emph{Sensors}, 2025, vol.~25, no.~10, p.~3181.}
+\bibitem[Fotovvatikhah et al. 2025]{fotovvatikhah2025}
+\abntrefinfo{Fotovvatikhah et al.}{FOTOVVATIKHAH et al.}{2025}
+{FOTOVVATIKHAH et al. A systematic review of ai-based techniques for automated
+  waste classification.
+\textbf{Sensors}, v.~25, n.~10, p.~3181, 2025.}
 
-\bibitem[Kumsetty 2022]{kumsetty2022}
-{KUMSETTY, N.; BHAT~NEKKARE, A. 2022.
-  \bibtextitlecommand{inproceedings}{Trashbox: Trash detection and
-  classification using quantum transfer learning}. In \emph{FRUCT 2022}. [S.l.:
-  s.n.].}
+\bibitem[Kumsetty, Nekkare et al. 2022]{kumsetty2022}
+\abntrefinfo{Kumsetty, Nekkare et al.}{KUMSETTY; NEKKARE et al.}{2022}
+{KUMSETTY, N.; NEKKARE, A. B. et al. Trashbox: Trash detection and
+  classification using quantum transfer learning. In:  \textbf{FRUCT 2022}.
+  [S.l.: s.n.], 2022.}
 
 \bibitem[{Mostafa Abla}]{mostafaabla}
-{{Mostafa Abla}. \bibtextitlecommand{misc}{\emph{Garbage classification (12
-  classes)}}. Kaggle.}
+\abntrefinfo{{Mostafa Abla}}{{Mostafa Abla}}{}
+{{Mostafa Abla}. \textbf{Garbage classification (12 classes)}. Kaggle.}
 
 \bibitem[{Thesis Project SACR3}]{thesisproject2024}
-{{Thesis Project SACR3}. \bibtextitlecommand{misc}{\emph{Classification model
-  for waste materials in residential areas}}. Roboflow Universe.}
+\abntrefinfo{{Thesis Project SACR3}}{{Thesis Project SACR3}}{}
+{{Thesis Project SACR3}. \textbf{Classification model for waste materials in
+  residential areas}. Roboflow Universe.}
 
 \end{thebibliography}

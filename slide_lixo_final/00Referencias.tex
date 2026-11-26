@@ -1,6 +1,10 @@
 \begin{frame}[allowframebreaks]
-	\frametitle{Referências}	
-	
-	\nocite{*}
-	%\bibliography{referencias}	
+	\frametitle{Referências}
+
+	% Não use \nocite{*}: o abntex2cite injeta abntex2-options.bib na lista de
+	% arquivos do BibTeX (por causa das opções de citação), e esses registros
+	% contêm \verb, que é ilegal dentro de um frame do beamer. Liste
+	% explicitamente as referências que devem aparecer.
+	\nocite{fotovvatikhah2025,kumsetty2022,abubakar2022,adharsh2024,arshnoor7389,mostafaabla,thesisproject2024,babe2025}
+	\bibliography{referencias}
 \end{frame}
